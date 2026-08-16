@@ -1,0 +1,45 @@
+Device: cuda
+Train: 2694  Val: 506
+Model params: 6.82M
+Epoch 1/40  loss=0.0648  val_psnr=26.428  val_ssim=0.6459
+Epoch 2/40  loss=0.0524  val_psnr=26.950  val_ssim=0.6850
+Epoch 3/40  loss=0.0500  val_psnr=27.058  val_ssim=0.6948
+Epoch 4/40  loss=0.0487  val_psnr=27.350  val_ssim=0.7039
+Epoch 5/40  loss=0.0473  val_psnr=27.427  val_ssim=0.7061
+Epoch 6/40  loss=0.0466  val_psnr=27.676  val_ssim=0.7139
+Epoch 7/40  loss=0.0460  val_psnr=27.731  val_ssim=0.7169
+Epoch 8/40  loss=0.0455  val_psnr=27.680  val_ssim=0.7185
+Epoch 9/40  loss=0.0452  val_psnr=27.819  val_ssim=0.7198
+Epoch 10/40  loss=0.0450  val_psnr=27.891  val_ssim=0.7220
+Epoch 11/40  loss=0.0446  val_psnr=27.905  val_ssim=0.7250
+Epoch 12/40  loss=0.0443  val_psnr=27.864  val_ssim=0.7149
+Epoch 13/40  loss=0.0442  val_psnr=27.819  val_ssim=0.7253
+Epoch 14/40  loss=0.0440  val_psnr=27.967  val_ssim=0.7254
+Epoch 15/40  loss=0.0438  val_psnr=27.946  val_ssim=0.7301
+Epoch 16/40  loss=0.0438  val_psnr=28.013  val_ssim=0.7325
+Epoch 17/40  loss=0.0434  val_psnr=28.102  val_ssim=0.7334
+Epoch 18/40  loss=0.0432  val_psnr=28.111  val_ssim=0.7339
+Epoch 19/40  loss=0.0432  val_psnr=28.132  val_ssim=0.7346
+Epoch 20/40  loss=0.0430  val_psnr=28.135  val_ssim=0.7359
+Epoch 21/40  loss=0.0429  val_psnr=28.141  val_ssim=0.7365
+Epoch 22/40  loss=0.0428  val_psnr=28.132  val_ssim=0.7370
+Epoch 23/40  loss=0.0426  val_psnr=28.101  val_ssim=0.7368
+Epoch 24/40  loss=0.0426  val_psnr=28.195  val_ssim=0.7381
+Epoch 25/40  loss=0.0425  val_psnr=28.207  val_ssim=0.7370
+Epoch 26/40  loss=0.0425  val_psnr=28.215  val_ssim=0.7388
+Epoch 27/40  loss=0.0423  val_psnr=28.225  val_ssim=0.7386
+Epoch 28/40  loss=0.0423  val_psnr=28.219  val_ssim=0.7383
+Epoch 29/40  loss=0.0422  val_psnr=28.249  val_ssim=0.7378
+Epoch 30/40  loss=0.0422  val_psnr=28.255  val_ssim=0.7394
+Epoch 31/40  loss=0.0421  val_psnr=28.246  val_ssim=0.7396
+Epoch 32/40  loss=0.0420  val_psnr=28.245  val_ssim=0.7400
+Epoch 33/40  loss=0.0420  val_psnr=28.258  val_ssim=0.7401
+Epoch 34/40  loss=0.0420  val_psnr=28.261  val_ssim=0.7399
+Epoch 35/40  loss=0.0420  val_psnr=28.265  val_ssim=0.7398
+Epoch 36/40  loss=0.0419  val_psnr=28.257  val_ssim=0.7403
+Epoch 37/40  loss=0.0419  val_psnr=28.261  val_ssim=0.7404
+Epoch 38/40  loss=0.0419  val_psnr=28.265  val_ssim=0.7404
+Epoch 39/40  loss=0.0419  val_psnr=28.264  val_ssim=0.7405
+Epoch 40/40  loss=0.0419  val_psnr=28.265  val_ssim=0.7404
+Done. Best val PSNR=28.265. Checkpoints in checkpoints
+TRAIN_EXIT_CODE=0

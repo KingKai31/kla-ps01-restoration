@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.DS_Store
+
+# Large data - never commit, README documents expected layout
+/data/**
+!/data/README.md
+
+# Trained weights are large - document where to get/regenerate them, don't commit by default
+checkpoints/*.pt
+checkpoints/*.pth
+!checkpoints/.gitkeep
+
+# Generated outputs
+outputs/*
+!outputs/.gitkeep
+
+# Debug/scratch
+reports/figures/*.png
+!reports/figures/.gitkeep

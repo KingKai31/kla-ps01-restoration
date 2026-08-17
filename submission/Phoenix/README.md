@@ -6,35 +6,50 @@ multiplicative speckle noise, additive noise, and spatial downsampling
 
 ## Setup
 
+Requires Python 3.11 (tested on 3.11.9) and an NVIDIA GPU with drivers
+already installed (falls back to CPU automatically if none is found, but
+GPU is what this was built and timed for).
+
 ```bash
+python -m venv .venv
+.venv\Scripts\activate       # Windows
+source .venv/bin/activate    # Linux/macOS
 pip install -r requirements.txt
 ```
 
-No other setup is needed. `requirements.txt` pins `torch` to a `+cu121`
-build via `--extra-index-url https://download.pytorch.org/whl/cu121` —
-verified to install and run correctly on a clean venv with an NVIDIA GPU on
-CUDA 12.1. If the benchmarking machine has a different CUDA/driver version,
-install the matching build first (e.g. `pip install torch --index-url
+(The venv is recommended but not required — `pip install -r
+requirements.txt` into any Python 3.11 environment works the same way.)
+
+That installs everything needed. One caveat on the install itself:
+`requirements.txt` pins `torch` to a `+cu121` build via `--extra-index-url
+https://download.pytorch.org/whl/cu121` — verified to install and run
+correctly on a clean venv with an NVIDIA GPU on CUDA 12.1. If the
+benchmarking machine has a different CUDA/driver version, install the
+matching build first (e.g. `pip install torch --index-url
 https://download.pytorch.org/whl/cu124`), then re-run `pip install -r
 requirements.txt` — it will see torch already satisfied and install the
-rest.
+rest. This install path has only been verified on Windows so far, not on
+Linux — expected to work there too (the extra index is additive, not
+exclusive, and PyPI's own Linux `torch` wheels typically bundle CUDA support
+directly), but that's not yet directly tested, flagging it as such rather
+than as confirmed.
 
-This install path (`--extra-index-url` + the exact `+cu121` pin) has only
-been verified on Windows so far, not on Linux. It's expected to work there
-too — the extra index is additive, not exclusive, and PyPI's own Linux
-`torch` wheels typically bundle CUDA support directly — but that's not yet
-directly tested, flagging it as such rather than as confirmed.
-
-The model runs entirely from local files — no internet access, no API keys,
-no additional downloads at any point. This is architectural, not incidental:
-the model (NAFNet-style encoder-decoder) is built from raw PyTorch layers
-with no pretrained backbone, its weights ship in `models/checkpoint.pt`, and
+Once installed, no further setup, configuration, or internet access is
+needed at any point. This is architectural, not incidental: the model
+(NAFNet-style encoder-decoder) is built from raw PyTorch layers with no
+pretrained backbone, its weights ship in `models/checkpoint.pt`, and
 `run.py` has no dependency on any other file in this folder or elsewhere.
 
 ## Usage
 
 ```bash
 python run.py <input_dir> <output_dir>
+```
+
+Example:
+
+```bash
+python run.py ./test_images ./restored_images
 ```
 
 - `<input_dir>`: directory of `.npy` files, each a 2D float32 grayscale array
@@ -47,6 +62,10 @@ python run.py <input_dir> <output_dir>
   regardless of code path (see `sanitize_output()` in `run.py`).
 - Runs on GPU automatically if available (`torch.cuda.is_available()`),
   falls back to CPU otherwise — no flag needed.
+- Works from any working directory — `run.py`'s default checkpoint path
+  resolves relative to its own file location, not wherever the command
+  happens to be run from, so `python /any/path/run.py <in> <out>` works
+  the same as running it from inside this folder.
 
 ## Robustness
 
@@ -68,9 +87,10 @@ head — a single forward pass jointly denoises, suppresses speckle, and
 upsamples 128→256.
 
 **Checkpoint currently shipped: Stage A** (KLA training data only). Measured
-on the held-out OOD-proxy validation split: PSNR 28.26, SSIM 0.740, LPIPS
-0.289 (n=506). Stage B (KLA data + external DIV2K/Flickr2K/DTD/SAR data,
-fine-tuned from this Stage A checkpoint with an expanded loss) is in
-progress; if it completes and validates before submission, its checkpoint
-replaces this one at `models/checkpoint.pt` with no other change to this
-folder.
+on this project's own held-out validation split (an unsupervised-clustering
+OOD proxy — not KLA's official test set, which we don't have access to):
+PSNR 28.26, SSIM 0.740, LPIPS 0.289 (n=506). Stage B (KLA data + external
+DIV2K/Flickr2K/DTD/SAR data, fine-tuned from this Stage A checkpoint with an
+expanded loss) is in progress; if it completes and validates before
+submission, its checkpoint replaces this one at `models/checkpoint.pt` with
+no other change to this folder.

@@ -86,11 +86,17 @@ activation-free blocks (no self-attention), fused pixel-shuffle upsampling
 head — a single forward pass jointly denoises, suppresses speckle, and
 upsamples 128→256.
 
-**Checkpoint currently shipped: Stage A** (KLA training data only). Measured
-on this project's own held-out validation split (an unsupervised-clustering
-OOD proxy — not KLA's official test set, which we don't have access to):
-PSNR 28.26, SSIM 0.740, LPIPS 0.289 (n=506). Stage B (KLA data + external
-DIV2K/Flickr2K/DTD/SAR data, fine-tuned from this Stage A checkpoint with an
-expanded loss) is in progress; if it completes and validates before
-submission, its checkpoint replaces this one at `models/checkpoint.pt` with
-no other change to this folder.
+**Checkpoint currently shipped: Stage B** (KLA data + external
+DIV2K/Flickr2K/DTD/SAR data, fine-tuned from the Stage A checkpoint with an
+expanded loss — Charbonnier + MS-SSIM + LPIPS + Sobel edge + range-
+consistency penalty). Measured on this project's own held-out validation
+split (an unsupervised-clustering OOD proxy — not KLA's official test set,
+which we don't have access to): PSNR 28.09, SSIM 0.731, LPIPS 0.163 (n=506).
+Compared to the Stage A checkpoint it was fine-tuned from (PSNR 28.26, SSIM
+0.740, LPIPS 0.289): LPIPS improved substantially (~44% relative) at a small
+cost to PSNR/SSIM — the added perceptual/edge loss terms trade a little
+pixel-exact reconstruction for better perceptual quality, which the LPIPS
+number is specifically designed to capture. This is the checkpoint with the
+highest val PSNR seen during Stage B training (epoch 15 of 20), not
+necessarily the literal final epoch. Full comparison:
+`reports/ppt_metrics_table.md`.

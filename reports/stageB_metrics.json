@@ -1,0 +1,28 @@
+{
+  "checkpoint": "models\\checkpoint.pt",
+  "checkpoint_epoch": 15,
+  "train_split_in_distribution_seen": {
+    "n": 508,
+    "psnr_mean": 28.502568953498788,
+    "psnr_std": 4.899063932353737,
+    "ssim_mean": 0.7818070903923984,
+    "ssim_std": 0.14194791535973994,
+    "lpips_mean": 0.1051427528324471,
+    "lpips_std": 0.04622712174969579
+  },
+  "val_split_ood_proxy_held_out_clusters": {
+    "n": 506,
+    "psnr_mean": 28.085893300798574,
+    "psnr_std": 4.1719989304494405,
+    "ssim_mean": 0.7311769134624991,
+    "ssim_std": 0.15046975022057207,
+    "lpips_mean": 0.16274218341858374,
+    "lpips_std": 0.07293849981613737
+  },
+  "gap": {
+    "psnr_gap_train_minus_val": 0.41667565270021356,
+    "ssim_gap_train_minus_val": 0.05063017692989924,
+    "lpips_gap_val_minus_train": 0.05759943058613663
+  },
+  "note": "train split metrics are on data the model was trained on (in-distribution ceiling), not a held-out in-distribution set - val split doubles as this project's OOD proxy. See README known limitations."
+}

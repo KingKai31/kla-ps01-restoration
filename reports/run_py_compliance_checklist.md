@@ -1,9 +1,36 @@
 # run.py compliance checklist — KLA PS01 final requirements
 
-Verified against `submission/Phoenix/run.py`, checkpoint = Stage A
-(`models/checkpoint.pt`), on 5 real never-seen `Test_NoisyLR` samples
-(indices 0, 5, 123, 250, 399 of 400) plus a genuinely nonexistent output
-directory. Full test script: the compliance run this table is built from.
+Originally verified against `submission/Phoenix/run.py` with the Stage A
+checkpoint, on 5 real never-seen `Test_NoisyLR` samples (indices 0, 5, 123,
+250, 399 of 400) plus a genuinely nonexistent output directory.
+
+## Stage B checkpoint swap — re-verified, not assumed carried over
+
+`models/checkpoint.pt` (both the repo-root copy and the `submission/Phoenix/`
+copy) now ships the Stage B checkpoint (`sha256 277de182...66786feeb7`,
+byte-verified identical in both locations). Per the instruction that shipped
+it, the full chain was re-run against these specific weights rather than
+assuming the Stage A verification still applies:
+
+| Check | Status | Evidence |
+|---|---|---|
+| Shape/range/NaN-Inf, same 5 samples | **PASS** | All 5: `ndim==2`, `resolution_ok=True` (128→256), `range_ok=True`, `finite_ok=True` — min/max within `[0.000, 1.000]` across all 5 |
+| No-internet (socket-blocked) | **PASS** | 0 network calls attempted, correct output, run against `submission/Phoenix/models/checkpoint.pt` specifically |
+| Fresh-venv install + run | **PASS** | New venv, installed strictly from `submission/Phoenix/requirements.txt`, output bit-identical to dev-venv run (`np.array_equal` → `True` on all 5) |
+| Wrong-cwd/absolute-path (the cwd-independence fix) | **PASS** | Re-tested specifically with Stage B weights, not just conceptually — output bit-identical to normal invocation |
+| **All four combined** (fresh venv + wrong cwd + no-internet + Stage B checkpoint, simultaneously) | **PASS** | The actual real shipping combination, tested together in one run: 0 network calls, correct output, exit code 0 |
+
+Independent metrics verification (not just trusting the checkpoint's own
+embedded metadata): ran `scripts/evaluate_checkpoint.py` against the real
+val split, got val_psnr=28.086, val_ssim=0.7312, val_lpips=0.1627 — matches
+the checkpoint's self-reported values within floating-point noise.
+
+**Note:** the shipped checkpoint is epoch 15 (highest val_psnr during
+training — standard best-checkpoint selection), not the literal final
+epoch 20. See `reports/ppt_metrics_table.md` for the full Stage A vs Stage B
+numbers and the reasoning.
+
+## Original Stage A verification (for reference)
 
 | # | Requirement | Status | Evidence |
 |---|---|---|---|

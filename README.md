@@ -85,6 +85,20 @@ Decomposed as `NoisyLR = GT_down * M + A`:
   tensor's shape at runtime (rather than hardcoding a fixed 2x/4x factor), so
   it is forward-compatible if 512↔256 data is released later, but it has
   only been trained/validated on 256↔128 so far.
+- **The external-dataset case-duplicate dedup logic
+  (`src/datasets/external_image_dataset.py`) is untested on a real
+  case-sensitive filesystem.** It exists to avoid double-counting images when
+  a dataset ships both a canonical folder (e.g. `DIV2K_train_HR`) and a
+  lowercase mirror of the same content - confirmed to actually occur on the
+  attached DIV2K Kaggle dataset. It's unit-tested against mock objects
+  (`scripts/_test_dedup_logic.py`) and end-to-end on a non-colliding real
+  tree, but the actual case-collision path can't be built on this dev
+  machine's Windows/NTFS filesystem (case-insensitive - `DIV2K_train_HR` and
+  `div2k_train_hr` resolve to the same directory here). Kaggle's filesystem
+  is Linux and case-sensitive, so this is where the real scenario first
+  occurs. Check the first Kaggle run's logs for a `"skipped N likely
+  case-duplicate dir(s)"` message to confirm it fires and picks the right
+  folder, rather than assuming it does.
 
 ## Repo layout
 

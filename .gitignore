@@ -21,3 +21,10 @@ outputs/*
 # Debug/scratch
 reports/figures/*.png
 !reports/figures/.gitkeep
+
+# Chunked-upload scratch artifacts (Kaggle dataset/code upload workflow) -
+# never commit, the actual uploads already landed on Kaggle/GitHub
+/_data_chunks/
+/_to_delete_data_chunks/
+/_split.log
+/*.zip

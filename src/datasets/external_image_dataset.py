@@ -22,9 +22,64 @@ from .synthetic_degrade import SpeckleAdditiveDegrader
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
 
 
+def _is_image_file(p: Path) -> bool:
+    return p.suffix.lower() in IMAGE_EXTENSIONS or p.suffix.lower() == ".npy"
+
+
+def _walk_dedup(dir_path: Path, skipped: list) -> list:
+    """Recurse through dir_path, collecting image/npy files, but when two
+    sibling subdirectories differ only by case (e.g. a dataset shipped with
+    both 'DIV2K_train_HR' and a lowercase mirror of the same images), recurse
+    into only one of them so the same picture isn't loaded twice under two
+    different paths. Prefers the non-all-lowercase name when exactly one
+    candidate in the collision group isn't all-lowercase (matches how these
+    datasets are actually named); otherwise picks alphabetically-first and
+    logs the rest as skipped, since automatic disambiguation isn't certain
+    in a genuinely ambiguous case - that should surface for a human to check,
+    not get silently guessed.
+
+    UNTESTED on a real case-sensitive filesystem: this was built and unit-
+    tested against the DIV2K-style scenario (see scripts/_test_dedup_logic.py)
+    using mock objects, not real directories, because this dev machine is
+    Windows/NTFS - case-insensitive, so 'DIV2K_train_HR' and 'div2k_train_hr'
+    resolve to the same directory here and the real collision can't be built
+    locally to test end-to-end. Kaggle's filesystem is Linux (case-sensitive),
+    where the real scenario actually occurs. Check the first Kaggle run's
+    logs for the "skipped N likely case-duplicate dir(s)" message to confirm
+    this actually fires and picks correctly, rather than assuming it does."""
+    try:
+        entries = list(dir_path.iterdir())
+    except (PermissionError, FileNotFoundError):
+        return []
+
+    subdirs = [e for e in entries if e.is_dir()]
+    by_lower = {}
+    for d in subdirs:
+        by_lower.setdefault(d.name.lower(), []).append(d)
+
+    to_recurse = []
+    for group in by_lower.values():
+        if len(group) == 1:
+            to_recurse.append(group[0])
+            continue
+        non_lower = [d for d in group if d.name != d.name.lower()]
+        chosen = non_lower[0] if len(non_lower) == 1 else sorted(group, key=lambda d: d.name)[0]
+        to_recurse.append(chosen)
+        skipped.extend(d for d in group if d != chosen)
+
+    files = [e for e in entries if e.is_file() and _is_image_file(e)]
+    for d in to_recurse:
+        files.extend(_walk_dedup(d, skipped))
+    return files
+
+
 def list_images(root: Path) -> list:
     root = Path(root)
-    files = [p for p in root.rglob("*") if p.suffix.lower() in IMAGE_EXTENSIONS or p.suffix.lower() == ".npy"]
+    skipped = []
+    files = _walk_dedup(root, skipped)
+    if skipped:
+        print(f"[external_image_dataset] skipped {len(skipped)} likely case-duplicate dir(s) "
+              f"under {root} (kept one per collision group): {[str(s) for s in skipped]}")
     return sorted(files)
 
 

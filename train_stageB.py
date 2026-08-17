@@ -110,6 +110,39 @@ def main():
 
     args = ap.parse_args()
 
+    # Path sanity log - first thing printed, before any data/model loading.
+    # --split-csv, --stageA-checkpoint, --checkpoint-dir, --report-dir, and
+    # --noise-model-dir all default to relative paths that resolve against
+    # the process's cwd, not this script's location. On a platform this
+    # can't be watched running live (Kaggle), a wrong cwd should show up
+    # here as the first log line, not as a FileNotFoundError several steps
+    # in or, worse, a silent wrong-file pickup.
+    print(f"cwd: {Path.cwd()}")
+    for name in ("split_csv", "stageA_checkpoint", "checkpoint_dir", "report_dir", "noise_model_dir"):
+        value = getattr(args, name)
+        resolved = value.resolve()
+        tag = "exists" if resolved.exists() else "MISSING"
+        print(f"  --{name.replace('_', '-')}: {value} -> {resolved} [{tag}]")
+
+    # --checkpoint-dir and --report-dir are the only two of the five that
+    # this script writes to (checkpoints, train_history_stageB.json). On
+    # Kaggle, /kaggle/input/ is mounted read-only - only /kaggle/working/ can
+    # be written. If either resolves under a read-only mount this fails here,
+    # with an actionable message, instead of a bare PermissionError after
+    # data/model loading has already spent several minutes.
+    for name in ("checkpoint_dir", "report_dir"):
+        resolved = getattr(args, name).resolve()
+        resolved.mkdir(parents=True, exist_ok=True)
+        probe = resolved / ".write_test"
+        try:
+            probe.write_text("ok")
+            probe.unlink()
+        except OSError as e:
+            raise SystemExit(
+                f"--{name.replace('_', '-')} resolves to {resolved}, which is not writable ({e}). "
+                f"On Kaggle, /kaggle/input/ is read-only - point this at /kaggle/working/... instead."
+            )
+
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 

@@ -18,9 +18,13 @@ checkpoints/*.pth
 outputs/*
 !outputs/.gitkeep
 
-# Debug/scratch
-reports/figures/*.png
-!reports/figures/.gitkeep
+# Note: figures under reports/figures/ are NOT ignored - every one generated
+# so far (Phase 1 analysis, insurance checks, training curves, PPT visuals)
+# has been a real deliverable referenced in the README/reports, not scratch.
+# An earlier blanket "reports/figures/*.png" rule here silently excluded all
+# of them from every commit until this was caught - if a genuinely disposable
+# debug image needs excluding in the future, ignore it by exact filename,
+# not by a blanket pattern that swallows real deliverables unnoticed.
 
 # Chunked-upload scratch artifacts (Kaggle dataset/code upload workflow) -
 # never commit, the actual uploads already landed on Kaggle/GitHub

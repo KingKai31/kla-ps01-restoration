@@ -19,6 +19,12 @@ https://download.pytorch.org/whl/cu124`), then re-run `pip install -r
 requirements.txt` — it will see torch already satisfied and install the
 rest.
 
+This install path (`--extra-index-url` + the exact `+cu121` pin) has only
+been verified on Windows so far, not on Linux. It's expected to work there
+too — the extra index is additive, not exclusive, and PyPI's own Linux
+`torch` wheels typically bundle CUDA support directly — but that's not yet
+directly tested, flagging it as such rather than as confirmed.
+
 The model runs entirely from local files — no internet access, no API keys,
 no additional downloads at any point. This is architectural, not incidental:
 the model (NAFNet-style encoder-decoder) is built from raw PyTorch layers

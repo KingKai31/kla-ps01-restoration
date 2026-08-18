@@ -120,3 +120,31 @@ not a confirmed capability. Extending to that scale with confidence would
 need retraining (or at minimum fine-tuning) on real 512↔256 pairs, which we
 did not have access to. Stating this precisely now rather than leaving it
 for a grader to discover unstated.
+
+## Data sources & licensing
+
+Stage B's training mix included KLA's provided data plus four external
+datasets. Only the trained model weights ship in this submission (no
+training data is redistributed), but the license terms of data used *to
+train* a shipped model are still worth stating plainly rather than assumed
+fine. Checked against each dataset's own stated terms, not assumed:
+
+| Dataset | Stated terms | Source |
+|---|---|---|
+| KLA training data | Provided directly by KLA for this competition | — |
+| DIV2K | **"Made available for academic research purpose only."** Images collected from the internet; copyright remains with original owners. **Not licensed for commercial use.** | [data.vision.ee.ethz.ch/cvl/DIV2K](https://data.vision.ee.ethz.ch/cvl/DIV2K/) |
+| Flickr2K | **Ambiguous.** No authoritative license statement found for the bundled dataset. An open, unresolved GitHub issue in the original NTIRE2017 repo explicitly questions whether its use complies with CC-BY 4.0 - not resolved as of this check. | [github.com/limbee/NTIRE2017#39](https://github.com/limbee/NTIRE2017/issues/39) |
+| DTD (textures) | Oxford VGG's official page states only "made available to the computer vision community for research purposes" - no formal license text (e.g. no SPDX identifier) found on the source page. | [robots.ox.ac.uk/~vgg/data/dtd](https://www.robots.ox.ac.uk/~vgg/data/dtd/) |
+| SAR (Sentinel-1&2) | Underlying data: **confirmed genuinely open** - EU Copernicus program's free, full, open-access policy, no restriction on commercial or non-commercial use, only requires an attribution notice when modified ("Contains modified Copernicus Sentinel data [Year]"). **However**, the specific Kaggle-hosted repackaging used (`requiemonk/sentinel12-image-pairs-segregated-by-terrain`) could not be directly verified for its own stated license via automated fetch (Kaggle's dataset pages are JS-rendered and not accessible to the tooling used for this check) - flagging this as **unverified**, not assumed identical to the underlying open Sentinel policy. | [esa.int Copernicus free access](https://www.esa.int/Applications/Observing_the_Earth/Copernicus/Free_access_to_Copernicus_Sentinel_satellite_data), [Kaggle dataset](https://www.kaggle.com/datasets/requiemonk/sentinel12-image-pairs-segregated-by-terrain) (license badge not machine-verified)
+
+**Honest read:** this is standard practice in the super-resolution research
+community - DIV2K/Flickr2K are the field's default training sets and appear
+in essentially every published SR paper's training pipeline under the same
+academic-research framing this submission falls under (a hackathon
+competition entry, not a commercial product). But "commonly done" and
+"verified clean" are different claims, and DIV2K's terms explicitly say
+academic-research-only. If this submission or the resulting model is used
+beyond the hackathon's research/competition context, DIV2K's and Flickr2K's
+terms should be revisited before any commercial use, and the Kaggle SAR
+dataset's actual license badge should be manually confirmed (not just its
+underlying Sentinel source policy).

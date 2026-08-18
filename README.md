@@ -110,11 +110,13 @@ Decomposed as `NoisyLR = GT_down * M + A`:
 ```
 scripts/analyze_noise.py   Phase 1: per-file stats, Gamma speckle fit, FFT blur estimate
 src/                        model / dataset / loss code (Phase 2+)
-eval.py                     standalone inference script: eval.py <input_dir> <output_dir>
-train.py                    training entry point, reproduces the submitted checkpoint
+run.py                      standalone inference script: run.py <input_dir> <output_dir> (renamed from eval.py)
+train.py                    Stage A training entry point
+train_stageB.py             Stage B training entry point (fine-tunes from a Stage A checkpoint)
+submission/Phoenix/         the actual submission package - self-contained run.py, requirements.txt, README.md, models/
 requirements.txt            pip freeze from the training environment
 checkpoints/                trained weights (not committed - see checkpoints/README)
-outputs/                    restored images produced by eval.py
+outputs/                    restored images produced by run.py
 reports/                    Phase 1 analysis outputs, metrics tables, figures
 data/                       not committed - see data/README.md for expected layout
 ```
@@ -144,7 +146,7 @@ scripts/freeze_requirements.py`, not a bare `pip freeze`, or this line gets
 silently dropped again.
 
 Verified so far: fresh-venv install on cu121 (this dev machine) and a
-CPU-only fresh venv (see reports/ for the eval.py verification log). Not yet
+CPU-only fresh venv (see reports/ for the run.py verification log). Not yet
 tested against a different CUDA minor version (e.g. cu124/cu126) - flagging
 this as unverified, not as working.
 
@@ -164,3 +166,20 @@ python scripts/analyze_noise.py \
   --train-noisy-dir <path to paired NoisyLR> \
   --out-dir reports
 ```
+
+## Data sources & licensing
+
+Stage B's training mix included KLA's provided data plus four external
+datasets (DIV2K, Flickr2K, DTD, SAR/Sentinel-1&2). Checked against each
+dataset's own stated terms, not assumed fine:
+
+| Dataset | Stated terms | Source |
+|---|---|---|
+| DIV2K | **"Academic research purpose only."** Not licensed for commercial use; copyright remains with original owners. | [data.vision.ee.ethz.ch/cvl/DIV2K](https://data.vision.ee.ethz.ch/cvl/DIV2K/) |
+| Flickr2K | **Ambiguous** - no authoritative license statement found; an open, unresolved GitHub issue in the original NTIRE2017 repo questions whether its use even complies with CC-BY 4.0. | [github.com/limbee/NTIRE2017#39](https://github.com/limbee/NTIRE2017/issues/39) |
+| DTD | Oxford VGG's page states only "made available... for research purposes" - no formal license text found. | [robots.ox.ac.uk/~vgg/data/dtd](https://www.robots.ox.ac.uk/~vgg/data/dtd/) |
+| SAR (Sentinel-1&2) | Underlying data confirmed genuinely open (EU Copernicus free/full/open policy, no commercial restriction). The specific Kaggle repackaging used could **not** be directly verified for its own license badge (JS-rendered page, not accessible to automated fetch) - flagged as unverified. | [esa.int](https://www.esa.int/Applications/Observing_the_Earth/Copernicus/Free_access_to_Copernicus_Sentinel_satellite_data), [Kaggle dataset](https://www.kaggle.com/datasets/requiemonk/sentinel12-image-pairs-segregated-by-terrain) |
+
+Full detail and the "what this means in practice" read: see
+`submission/Phoenix/README.md`'s Data sources & licensing section (same
+content, submission-package copy).

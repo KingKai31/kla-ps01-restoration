@@ -11,7 +11,8 @@ values differ, e.g.:
   python train_stageB.py \
     --kla-gt-dir /kaggle/input/kla-ps01/train/GT \
     --kla-noisy-dir /kaggle/input/kla-ps01/train/NoisyLR \
-    --external-dirs /kaggle/input/div2k/DIV2K_train_HR /kaggle/input/dtd/images \
+    --external-dirs /kaggle/input/div2k/DIV2K_train_HR /kaggle/input/flickr2k/Flickr2K \
+      /kaggle/input/dtd/images /kaggle/input/sentinel12-image-pairs-segregated-by-terrain \
     --stageA-checkpoint /kaggle/input/kla-ps01-stagea/stageA_best.pt \
     --checkpoint-dir /kaggle/working/checkpoints \
     --report-dir /kaggle/working/reports

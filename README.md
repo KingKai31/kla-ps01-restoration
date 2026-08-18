@@ -210,9 +210,22 @@ dataset's own stated terms, not assumed fine:
 | DTD | Oxford VGG's page states only "made available... for research purposes" - no formal license text found. | [robots.ox.ac.uk/~vgg/data/dtd](https://www.robots.ox.ac.uk/~vgg/data/dtd/) |
 | SAR (Sentinel-1&2) | Underlying data confirmed genuinely open (EU Copernicus free/full/open policy, no commercial restriction). The specific Kaggle repackaging used could **not** be directly verified for its own license badge (JS-rendered page, not accessible to automated fetch) - flagged as unverified. | [esa.int](https://www.esa.int/Applications/Observing_the_Earth/Copernicus/Free_access_to_Copernicus_Sentinel_satellite_data), [Kaggle dataset](https://www.kaggle.com/datasets/requiemonk/sentinel12-image-pairs-segregated-by-terrain) |
 
-Full detail and the "what this means in practice" read: see
-`submission/Phoenix/README.md`'s Data sources & licensing section (same
-content, submission-package copy).
+**Context: this is a non-commercial student hackathon submission, not a
+commercial product** - no revenue, no end-user distribution, evaluation-only
+use under the competition's own rules. That's the correct frame for how
+much risk "academic research purposes only" terms actually represent right
+now; it doesn't erase the question, but it bounds it.
+
+Checked (without retraining) whether DIV2K/Flickr2K's license risk is
+load-bearing - i.e. whether dropping them would cost Stage B meaningfully:
+the training code samples every external image uniformly regardless of
+source (no per-source balancing), and no per-source metric is logged
+anywhere, so precise attribution isn't answerable from the existing
+checkpoint alone. A DTD+SAR-only variant (reusing the loss-ablation
+infrastructure already built) would give a real answer - flagged as a
+ready, cheap next step, not run in this pass since retraining was out of
+scope. Full detail: `submission/Phoenix/README.md`'s Data sources &
+licensing section (same content, submission-package copy).
 
 ## Reproducibility
 

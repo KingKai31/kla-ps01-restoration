@@ -199,17 +199,56 @@ fine. Checked against each dataset's own stated terms, not assumed:
 | DTD (textures) | Oxford VGG's official page states only "made available to the computer vision community for research purposes" - no formal license text (e.g. no SPDX identifier) found on the source page. | [robots.ox.ac.uk/~vgg/data/dtd](https://www.robots.ox.ac.uk/~vgg/data/dtd/) |
 | SAR (Sentinel-1&2) | Underlying data: **confirmed genuinely open** - EU Copernicus program's free, full, open-access policy, no restriction on commercial or non-commercial use, only requires an attribution notice when modified ("Contains modified Copernicus Sentinel data [Year]"). **However**, the specific Kaggle-hosted repackaging used (`requiemonk/sentinel12-image-pairs-segregated-by-terrain`) could not be directly verified for its own stated license via automated fetch (Kaggle's dataset pages are JS-rendered and not accessible to the tooling used for this check) - flagging this as **unverified**, not assumed identical to the underlying open Sentinel policy. | [esa.int Copernicus free access](https://www.esa.int/Applications/Observing_the_Earth/Copernicus/Free_access_to_Copernicus_Sentinel_satellite_data), [Kaggle dataset](https://www.kaggle.com/datasets/requiemonk/sentinel12-image-pairs-segregated-by-terrain) (license badge not machine-verified)
 
+**Context this should be read in: this is a non-commercial student hackathon
+submission, not a commercial product.** No revenue, no distribution to end
+users, no deployment beyond the competition's judging process - the entire
+use case is evaluation by KLA's judges under the hackathon's own rules.
+"Academic research purposes only" terms are a materially smaller concern in
+that context than they would be for a commercial deployment train on the
+same data; this doesn't erase the license question, but it is the correct
+frame for how much risk it actually represents right now.
+
 **Honest read:** this is standard practice in the super-resolution research
 community - DIV2K/Flickr2K are the field's default training sets and appear
 in essentially every published SR paper's training pipeline under the same
-academic-research framing this submission falls under (a hackathon
-competition entry, not a commercial product). But "commonly done" and
-"verified clean" are different claims, and DIV2K's terms explicitly say
-academic-research-only. If this submission or the resulting model is used
-beyond the hackathon's research/competition context, DIV2K's and Flickr2K's
-terms should be revisited before any commercial use, and the Kaggle SAR
-dataset's actual license badge should be manually confirmed (not just its
-underlying Sentinel source policy).
+academic-research framing this submission falls under. But "commonly done"
+and "verified clean" are different claims, and DIV2K's terms explicitly say
+academic-research-only. If this submission or the resulting model is ever
+used beyond the hackathon's research/competition context, DIV2K's and
+Flickr2K's terms should be revisited before any commercial use, and the
+Kaggle SAR dataset's actual license badge should be manually confirmed (not
+just its underlying Sentinel source policy).
+
+**Is the DIV2K/Flickr2K license risk load-bearing - i.e. could they be
+dropped without meaningfully hurting Stage B's results, if this ever needed
+to ship commercially?** Checked what's actually knowable from the
+already-trained checkpoint without retraining (retraining was explicitly
+out of scope for this check):
+
+- **Training mechanism, verified from the code:** `MixedDataset` and
+  `ExternalImageDataset` (`src/datasets/external_image_dataset.py`) pool
+  every external image from every `--external-dirs` path into one flat
+  list and sample uniformly at random from it - there is no per-source
+  balancing or weighting. So each source's actual influence during
+  training was proportional to its raw image count in the real run, not a
+  deliberately tuned mix.
+- **What can't be measured post-hoc:** no per-source loss or metric is
+  logged anywhere - not in the checkpoint's saved metadata, not in a
+  training history file (none was retained for the real Stage B run, a
+  separately-documented gap), and the KLA val split we evaluate on
+  contains zero DIV2K/Flickr2K/DTD/SAR images, so per-image val
+  performance can't be attributed back to which external source helped.
+  This is a genuine limit on what's answerable from the existing
+  checkpoint alone, not a gap we're eliding.
+- **What would give a real answer:** a DTD+SAR-only Stage B variant, same
+  training recipe and epoch budget as the loss-ablation runs already
+  planned for this pass, would directly test whether dropping DIV2K/
+  Flickr2K costs meaningfully - it's a natural extension of ablation
+  infrastructure that already exists, not new engineering. Not run in
+  this pass (retraining was explicitly out of scope here) - flagged as a
+  concrete, cheap, ready-to-launch next step if this license question
+  ever becomes practically important, rather than left as a vague future
+  todo.
 
 ## Reproducibility
 

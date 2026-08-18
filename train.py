@@ -22,6 +22,7 @@ from skimage.metrics import structural_similarity as sk_ssim
 from src.datasets.kla_dataset import KLAPairDataset
 from src.models.nafnet import NAFNetSR
 from src.losses.charbonnier_msssim import CharbonnierMSSSIMLoss
+from src.utils.reproducibility import set_full_determinism, seed_worker, make_seeded_generator
 
 
 def evaluate(model, loader, device):
@@ -57,8 +58,7 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
+    set_full_determinism(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
@@ -67,10 +67,17 @@ def main():
     val_ds = KLAPairDataset(args.gt_dir, args.noisy_dir, args.split_csv, "val", augment=False)
     print(f"Train: {len(train_ds)}  Val: {len(val_ds)}")
 
+    # worker_init_fn + generator: without these, np.random calls inside
+    # KLAPairDataset's augmentation (which runs in worker processes when
+    # num_workers>0) are not reproducibly seeded - see
+    # src/utils/reproducibility.py for why this is a real, separate gap
+    # from seeding the main process's RNGs.
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True,
-                               num_workers=args.num_workers, pin_memory=True, drop_last=True)
+                               num_workers=args.num_workers, pin_memory=True, drop_last=True,
+                               worker_init_fn=seed_worker, generator=make_seeded_generator(args.seed))
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False,
-                             num_workers=args.num_workers, pin_memory=True)
+                             num_workers=args.num_workers, pin_memory=True,
+                             worker_init_fn=seed_worker)
 
     model = NAFNetSR(img_channel=1, width=args.width, upscale=2).to(device)
     n_params = sum(p.numel() for p in model.parameters())
@@ -126,7 +133,7 @@ def main():
             best_psnr = val_psnr
             torch.save({"model_state_dict": model.state_dict(),
                         "epoch": epoch, "val_psnr": val_psnr, "val_ssim": val_ssim,
-                        "width": args.width, "upscale": 2},
+                        "width": args.width, "upscale": 2, "seed": args.seed},
                        args.checkpoint_dir / "stageA_best.pt")
 
         with open(args.report_dir / "train_history.json", "w") as f:
@@ -134,7 +141,7 @@ def main():
 
     torch.save({"model_state_dict": model.state_dict(), "epoch": args.epochs,
                 "val_psnr": val_psnr, "val_ssim": val_ssim,
-                "width": args.width, "upscale": 2},
+                "width": args.width, "upscale": 2, "seed": args.seed},
                args.checkpoint_dir / "stageA_last.pt")
 
     print(f"Done. Best val PSNR={best_psnr:.3f}. Checkpoints in {args.checkpoint_dir}")

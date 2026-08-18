@@ -183,3 +183,18 @@ dataset's own stated terms, not assumed fine:
 Full detail and the "what this means in practice" read: see
 `submission/Phoenix/README.md`'s Data sources & licensing section (same
 content, submission-package copy).
+
+## Reproducibility
+
+`train.py`/`train_stageB.py` fully seed Python's `random`, NumPy, torch,
+CUDA, and cuDNN's determinism flags, plus DataLoader worker processes
+(previously the worker-process gap meant augmentation wasn't reproducibly
+seeded when `--num-workers>0` - a real, now-fixed gap, not previously
+verified). Proof: two identical runs of `train.py` with `--seed 42
+--num-workers 2` produced a **bit-identical model `state_dict`**
+(`torch.equal` on every tensor) and matching `val_psnr` to full float
+precision. See `src/utils/reproducibility.py` and
+`submission/Phoenix/README.md`'s Reproducibility section (including the
+shipped Stage B checkpoint's actual seed, `seed=0`, and the honest caveat
+that it predates this fix and isn't independently re-derivable from the
+checkpoint file itself) for full detail.

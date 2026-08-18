@@ -43,6 +43,7 @@ from src.datasets.external_image_dataset import ExternalImageDataset, MixedDatas
 from src.datasets.synthetic_degrade import SpeckleAdditiveDegrader
 from src.models.nafnet import NAFNetSR
 from src.losses.stageB_composite import StageBCompositeLoss
+from src.utils.reproducibility import set_full_determinism, seed_worker, make_seeded_generator
 
 
 def evaluate(model, loader, device, lpips_fn):
@@ -143,8 +144,7 @@ def main():
                 f"On Kaggle, /kaggle/input/ is read-only - point this at /kaggle/working/... instead."
             )
 
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
+    set_full_determinism(args.seed)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
@@ -172,9 +172,15 @@ def main():
     print(f"Train (mixed): {len(train_ds)}  KLA-train pool: {len(kla_train_ds)}  "
           f"External pool: {len(external_ds) if external_ds else 0}  Val (KLA OOD-proxy): {len(val_ds)}")
 
+    # worker_init_fn + generator: without these, np.random calls inside
+    # MixedDataset/KLAPairDataset's augmentation (which run in worker
+    # processes when num_workers>0) are not reproducibly seeded - see
+    # src/utils/reproducibility.py.
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True,
-                               num_workers=args.num_workers, pin_memory=True, drop_last=True)
-    val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+                               num_workers=args.num_workers, pin_memory=True, drop_last=True,
+                               worker_init_fn=seed_worker, generator=make_seeded_generator(args.seed))
+    val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
+                             worker_init_fn=seed_worker)
 
     # --- model: fine-tune from Stage A, or resume Stage B ---
     resume_path = args.checkpoint_dir / "stageB_last.pt"
@@ -252,7 +258,7 @@ def main():
 
         ckpt_out = {"model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(),
                     "epoch": epoch, "val_psnr": val_psnr, "val_ssim": val_ssim, "val_lpips": val_lpips,
-                    "width": width, "upscale": upscale, "stage": "B",
+                    "width": width, "upscale": upscale, "stage": "B", "seed": args.seed,
                     "base_checkpoint": str(args.stageA_checkpoint)}
 
         if val_psnr > best_psnr:

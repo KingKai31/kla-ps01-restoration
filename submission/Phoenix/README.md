@@ -148,3 +148,27 @@ beyond the hackathon's research/competition context, DIV2K's and Flickr2K's
 terms should be revisited before any commercial use, and the Kaggle SAR
 dataset's actual license badge should be manually confirmed (not just its
 underlying Sentinel source policy).
+
+## Reproducibility
+
+`train.py` and `train_stageB.py` fully seed every RNG source their code
+path touches: Python's `random`, NumPy, `torch.manual_seed`, and
+`torch.cuda.manual_seed_all` (this was previously only partial - the CUDA
+seed call and cuDNN's deterministic flags were missing, and the DataLoader
+augmentation, which runs inside worker processes when `--num-workers>0`,
+was not reproducibly seeded at all). Fixed in
+`src/utils/reproducibility.py`, verified with real evidence, not assumed:
+ran `train.py` twice with identical `--seed 42 --num-workers 2` (the exact
+condition that was broken - worker-process augmentation) and compared the
+resulting checkpoints directly. Result: **every tensor in the model's
+`state_dict` is bit-identical (`torch.equal`) between the two runs, and
+`val_psnr` matches to full float precision** (26.217100912881932 in both).
+
+**Seed used for the shipped Stage B checkpoint:** `--seed` was not
+explicitly overridden in any Stage B launch command used, so it ran with
+the script's default, **`seed=0`**. This checkpoint predates the fix above
+(checkpoints now save their own `seed` field for future provenance; this
+one doesn't have it recorded internally), so this is stated based on the
+launch commands actually used, not independently re-derivable from the
+checkpoint file itself - flagging that distinction rather than overclaiming
+certainty.

@@ -96,7 +96,10 @@ Decomposed as `NoisyLR = GT_down * M + A`:
   true higher resolution, since no real 512×512+ KLA source data exists to
   test against (the test's pseudo-GT is a bicubic upscale with no real fine
   detail beyond what bicubic already produces - stated explicitly in the
-  table so the result isn't overread).
+  table so the result isn't overread). Precise framing for slide/report
+  use: **verified generalization to 256→512 (2×) - the same 2× factor used
+  in training, applied to an unseen 256-input resolution.** Not
+  "scale-agnostic," not "infers arbitrary scale."
 - **Any input 8px or smaller on either side falls back to the classical
   (lower-quality) restoration path instead of the trained model.** Found
   via `tests/test_run_py_robustness.py` (formal, re-runnable suite - see

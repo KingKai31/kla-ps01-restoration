@@ -167,7 +167,13 @@ crashes, zero fallback triggers — clearly outperforming both a bicubic
 baseline and the classical bicubic+NLM fallback at the same task (see
 `reports/ppt_metrics_table.md`'s Scale generalization section for the full
 table and methodology). **This confirms the architecture generalizes
-mechanically to an untrained input resolution.** What remains genuinely
+mechanically to an untrained input resolution.** Precise framing for
+slide/report use: **verified generalization to 256→512 (2×) — the same 2×
+factor used in training, applied to an unseen 256-input resolution.** Not
+"scale-agnostic" and not "infers arbitrary scale" - the upscale factor is
+fixed at 2×, as stated above; what's newly verified is that this fixed
+2× still works correctly at an input size the model never saw in
+training. What remains genuinely
 untested: real reconstruction quality at a true higher resolution — no
 real 512×512+ KLA source images exist to build a real test against, so the
 test above used a bicubic-upscaled pseudo-GT with no real fine detail

@@ -108,6 +108,12 @@ def main():
     ap.add_argument("--stageB-metrics-json", type=Path, default=Path("reports/stageB_metrics.json"))
     ap.add_argument("--skip-stageA-grid", action="store_true",
                      help="Skip regenerating the Stage A grid (already exists, saves time)")
+    ap.add_argument("--h100-ms-per-image", type=float, default=None,
+                     help="Measured end-to-end inference time on NVIDIA H100, ms/image - included in the table if given")
+    ap.add_argument("--h100-batch-size", type=int, default=None)
+    ap.add_argument("--h100-total-time-s", type=float, default=None)
+    ap.add_argument("--h100-gpu-name", type=str, default="NVIDIA H100 SXM 80GB")
+    ap.add_argument("--h100-method-note", type=str, default=None)
     ap.add_argument("--out-dir", type=Path, default=Path("reports"))
     args = ap.parse_args()
 
@@ -151,6 +157,17 @@ def main():
                       f"(train_history_stageB.json) not available locally to show the full curve.")
     else:
         lines.append("| B (KLA+external) | Val/OOD-proxy | *pending* | *pending* | *pending* | *pending* |")
+
+    if args.h100_ms_per_image is not None:
+        lines.append("")
+        lines.append("## Inference time (feasibility slide)")
+        lines.append("")
+        lines.append(f"**{args.h100_ms_per_image:.1f} ms/image on {args.h100_gpu_name}**"
+                      + (f" ({args.h100_total_time_s:.3f}s total for a {args.h100_batch_size}-image batch)"
+                         if args.h100_total_time_s is not None and args.h100_batch_size is not None else ""))
+        if args.h100_method_note:
+            lines.append("")
+            lines.append(args.h100_method_note)
 
     table_md = "\n".join(lines)
     with open(args.out_dir / "ppt_metrics_table.md", "w") as f:

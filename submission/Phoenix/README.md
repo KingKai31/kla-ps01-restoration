@@ -96,10 +96,11 @@ Compared to the Stage A checkpoint it was fine-tuned from (PSNR 28.26, SSIM
 0.740, LPIPS 0.289): LPIPS improved substantially (~44% relative) at a small
 cost to PSNR/SSIM — the added perceptual/edge loss terms trade a little
 pixel-exact reconstruction for better perceptual quality, which the LPIPS
-number is specifically designed to capture. This is the checkpoint with the
-highest val PSNR seen during Stage B training (epoch 15 of 20), not
-necessarily the literal final epoch. Full comparison:
-`reports/ppt_metrics_table.md`.
+number is specifically designed to capture. Shipped checkpoint selection:
+**best checkpoint by validation PSNR during training** (epoch 15 of 20) —
+the standard, defensible checkpointing criterion used throughout this
+project (Stage A's shipped checkpoint was selected the same way). Full
+comparison: `reports/ppt_metrics_table.md`.
 
 ## Known limitation: scale factor
 

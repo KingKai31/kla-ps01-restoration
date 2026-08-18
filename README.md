@@ -86,19 +86,24 @@ Decomposed as `NoisyLR = GT_down * M + A`:
   it is forward-compatible if 512↔256 data is released later, but it has
   only been trained/validated on 256↔128 so far.
 - **The external-dataset case-duplicate dedup logic
-  (`src/datasets/external_image_dataset.py`) is untested on a real
-  case-sensitive filesystem.** It exists to avoid double-counting images when
-  a dataset ships both a canonical folder (e.g. `DIV2K_train_HR`) and a
-  lowercase mirror of the same content - confirmed to actually occur on the
-  attached DIV2K Kaggle dataset. It's unit-tested against mock objects
+  (`src/datasets/external_image_dataset.py`) exists but was never exercised
+  by the actual Stage B run.** It guards against double-counting images
+  when a dataset ships both a canonical folder (e.g. `DIV2K_train_HR`) and
+  a lowercase mirror of the same content - confirmed to exist as a
+  possibility on the attached DIV2K Kaggle dataset. In practice, the
+  `--external-dirs` path used for the real Stage B run was already the
+  exact canonical folder (`.../DIV2K_train_HR/DIV2K_train_HR`), not a
+  lowercase duplicate, so there was no collision for the dedup logic to
+  resolve on this run - **the correct folder path was used explicitly**,
+  this is not a claim that the dedup logic itself was verified in
+  production. It remains unit-tested against mock objects
   (`scripts/_test_dedup_logic.py`) and end-to-end on a non-colliding real
-  tree, but the actual case-collision path can't be built on this dev
-  machine's Windows/NTFS filesystem (case-insensitive - `DIV2K_train_HR` and
-  `div2k_train_hr` resolve to the same directory here). Kaggle's filesystem
-  is Linux and case-sensitive, so this is where the real scenario first
-  occurs. Check the first Kaggle run's logs for a `"skipped N likely
-  case-duplicate dir(s)"` message to confirm it fires and picks the right
-  folder, rather than assuming it does.
+  tree, but the actual case-collision resolution path has still never run
+  against real duplicate directories (can't be built on this dev machine's
+  Windows/NTFS filesystem either - case-insensitive, so `DIV2K_train_HR`
+  and `div2k_train_hr` resolve to the same directory here). State this
+  precisely if it comes up: the run avoided the ambiguity by using the
+  right path, not by the dedup logic proving itself.
 
 ## Repo layout
 

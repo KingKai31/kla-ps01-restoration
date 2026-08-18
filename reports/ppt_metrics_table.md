@@ -33,7 +33,7 @@ Paired Wilcoxon signed-rank test (non-parametric, makes no normality assumption)
 | SSIM | 0.7404 | 0.7312 | -0.0093 | [-0.0105, -0.0080] | 2.80e-45 | **Yes** |
 | LPIPS | 0.2889 | 0.1627 | -0.1262 | [-0.1362, -0.1162] | 9.67e-79 | **Yes** |
 
-**PSNR, SSIM, LPIPS changes are statistically significant (p<0.05).**
+**This is a real, two-sided, statistically proven tradeoff - not a one-sided win.** LPIPS improved and PSNR, SSIM regressed, and **both directions are independently statistically significant (p<0.05)** - the PSNR, SSIM regressions are exactly as statistically real as the LPIPS improvement is, confirmed by the same paired Wilcoxon test and bootstrap CI, on the same 506 images. Neither result is reported with more confidence than the other.
 
 ## Classical baseline comparison (val/OOD-proxy, n=506)
 

@@ -115,7 +115,12 @@ Compared to the Stage A checkpoint it was fine-tuned from (PSNR 28.26, SSIM
 0.740, LPIPS 0.289): LPIPS improved substantially (~44% relative) at a small
 cost to PSNR/SSIM — the added perceptual/edge loss terms trade a little
 pixel-exact reconstruction for better perceptual quality, which the LPIPS
-number is specifically designed to capture. Shipped checkpoint selection:
+number is specifically designed to capture. **Both halves of this tradeoff
+are statistically proven, not just the improvement** — a paired Wilcoxon
+test confirms the PSNR/SSIM regressions are exactly as statistically
+significant (p<0.05) as the LPIPS gain, not noise on either side (see
+`reports/ppt_metrics_table.md`'s Statistical significance section for the
+full per-metric p-values and bootstrap CIs). Shipped checkpoint selection:
 **best checkpoint by validation PSNR during training** (epoch 15 of 20) —
 the standard, defensible checkpointing criterion used throughout this
 project (Stage A's shipped checkpoint was selected the same way). Full

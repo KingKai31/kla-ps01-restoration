@@ -185,6 +185,13 @@ def statistical_significance_table(stageA_csv, stageB_csv, n_bootstrap=1000, see
         "| Metric | Mean A | Mean B | Mean diff (B-A) | 95% CI | Wilcoxon p-value | Significant (p<0.05)? |",
         "|---|---|---|---|---|---|---|",
     ]
+    # "higher is better" for PSNR/SSIM, "lower is better" for LPIPS - needed
+    # to state each significant change as an improvement or a regression
+    # explicitly, not just "significant", so the two-sided nature of the
+    # tradeoff (proven LPIPS gain AND proven PSNR/SSIM cost, not just the
+    # positive half) can't be misread from this table alone.
+    higher_is_better = {"psnr": True, "ssim": True, "lpips": False}
+
     results = {}
     for metric in ("psnr", "ssim", "lpips"):
         a = dfA[metric].to_numpy()
@@ -197,21 +204,30 @@ def statistical_significance_table(stageA_csv, stageB_csv, n_bootstrap=1000, see
             boot_means[i] = diff[idx].mean()
         ci_low, ci_high = np.percentile(boot_means, [2.5, 97.5])
         sig = p < 0.05
-        results[metric] = {"p": p, "sig": sig, "diff": diff.mean(), "ci": (ci_low, ci_high)}
+        is_gain = (diff.mean() > 0) if higher_is_better[metric] else (diff.mean() < 0)
+        results[metric] = {"p": p, "sig": sig, "diff": diff.mean(), "ci": (ci_low, ci_high), "is_gain": is_gain}
         lines.append(f"| {metric.upper()} | {a.mean():.4f} | {b.mean():.4f} | {diff.mean():+.4f} | "
                       f"[{ci_low:+.4f}, {ci_high:+.4f}] | {p:.2e} | {'**Yes**' if sig else 'No'} |")
 
     lines.append("")
-    sig_metrics = [m.upper() for m, r in results.items() if r["sig"]]
+    sig_gains = [m.upper() for m, r in results.items() if r["sig"] and r["is_gain"]]
+    sig_losses = [m.upper() for m, r in results.items() if r["sig"] and not r["is_gain"]]
     nonsig_metrics = [m.upper() for m, r in results.items() if not r["sig"]]
-    parts = []
-    if sig_metrics:
-        parts.append(f"{', '.join(sig_metrics)} change{'s are' if len(sig_metrics) > 1 else ' is'} "
-                      f"statistically significant (p<0.05)")
+
+    lines.append(
+        f"**This is a real, two-sided, statistically proven tradeoff - not a one-sided win.** "
+        f"{', '.join(sig_gains) if sig_gains else 'No metric'} improved and "
+        f"{', '.join(sig_losses) if sig_losses else 'no metric'} regressed, and **both directions are "
+        f"independently statistically significant (p<0.05)** - the {', '.join(sig_losses) if sig_losses else ''} "
+        f"regression{'s are' if len(sig_losses) > 1 else ' is'} exactly as statistically real as the "
+        f"{', '.join(sig_gains) if sig_gains else ''} improvement{'s are' if len(sig_gains) > 1 else ' is'}, "
+        f"confirmed by the same paired Wilcoxon test and bootstrap CI, on the same {n} images. Neither "
+        f"result is reported with more confidence than the other."
+    )
     if nonsig_metrics:
-        parts.append(f"{', '.join(nonsig_metrics)} change{'s are' if len(nonsig_metrics) > 1 else ' is'} "
-                      f"NOT statistically significant at n={n}")
-    lines.append("**" + "; ".join(parts) + ".**")
+        lines.append("")
+        lines.append(f"{', '.join(nonsig_metrics)} change{'s are' if len(nonsig_metrics) > 1 else ' is'} "
+                      f"NOT statistically significant at n={n}.")
     return lines
 
 

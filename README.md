@@ -4,11 +4,36 @@ Restores semiconductor inspection images degraded by simultaneous speckle
 noise, Gaussian blur, and spatial downsampling (512→256 or 256→128),
 scored on SSIM / pSNR / LPIPS and end-to-end inference time on an H100.
 
+**For a fast overview, start with
+[reports/JUDGE_SUMMARY.md](reports/JUDGE_SUMMARY.md)** — one page, ~90
+seconds, headline numbers and honest limitations with pointers to full
+evidence. The rest of this file is the full development history and detail.
+
 ## Status
 
-**Phase 1 (noise-physics analysis) complete, Phase 2 not started.** No model
-has been trained yet. Measured on all 3200 local train pairs
-(`reports/phase1_decomposition_summary.json`):
+**Complete and submission-ready.** Both training stages are done, benchmarked,
+and shipped: **Stage A** (NAFNet-style model, KLA data only) and **Stage B**
+(fine-tuned on KLA + external data with an expanded composite loss, the
+currently shipped checkpoint). Headline results on the val/OOD-proxy split
+(n=506; full detail and every supporting statistical test in
+[reports/ppt_metrics_table.md](reports/ppt_metrics_table.md), the single
+source of truth for every number in this project):
+
+| | PSNR | SSIM | LPIPS |
+|---|---|---|---|
+| Classical baseline (bicubic + NLM) | 20.58 | 0.374 | 0.562 |
+| Stage A (KLA-only) | 28.26 | 0.740 | 0.289 |
+| **Stage B (shipped)** | 28.09 | 0.731 | **0.163** |
+
+Measured end-to-end inference: **76.4 ms/image on H100 SXM 80GB**. The
+submission package is `submission/Phoenix/` — see its own README for the
+exact run instructions and compliance detail.
+
+### Noise-physics analysis (Phase 1 findings)
+
+Before building the model, the actual degradation physics were measured
+from KLA's real paired training data rather than assumed. Measured on all
+3200 local train pairs (`reports/phase1_decomposition_summary.json`):
 
 The degradation is **not** pure multiplicative speckle — NoisyLR pixel values
 go negative, which multiplicative noise on a non-negative GT cannot produce.
@@ -136,18 +161,25 @@ Decomposed as `NoisyLR = GT_down * M + A`:
 ## Repo layout
 
 ```
-scripts/analyze_noise.py   Phase 1: per-file stats, Gamma speckle fit, FFT blur estimate
-src/                        model / dataset / loss code (Phase 2+)
+src/                        model / dataset / loss code
+scripts/                    analysis/eval/report-generation scripts - Phase 1 noise analysis
+                             (analyze_noise.py), Stage A/B evaluation, and every rigor-pass
+                             check (ensemble, scale-generalization, statistical tests, etc.)
 run.py                      standalone inference script: run.py <input_dir> <output_dir> (renamed from eval.py)
 train.py                    Stage A training entry point
 train_stageB.py             Stage B training entry point (fine-tunes from a Stage A checkpoint)
+models/                     trained weights run.py actually loads by default (models/checkpoint.pt,
+                             currently the shipped Stage B checkpoint) - committed, unlike checkpoints/
 submission/Phoenix/         the actual submission package - self-contained run.py, requirements.txt, README.md, models/
 requirements.txt            pip freeze from the training environment
-checkpoints/                trained weights (not committed - see checkpoints/README)
+checkpoints/                intermediate/other training-run checkpoints (not committed - gitignored,
+                             distinct from models/ which holds the checkpoint actually shipped/loaded)
 outputs/                    restored images produced by run.py
 tests/                      formal pytest suite (run.py robustness/edge-case coverage,
                              including the PyWavelets dependency-gap regression check)
-reports/                    Phase 1 analysis outputs, metrics tables, figures
+reports/                    every metrics table, statistical test, figure, and finding from this
+                             project - reports/ppt_metrics_table.md is the single source of truth
+                             for numbers, reports/JUDGE_SUMMARY.md is the one-page overview
 data/                       not committed - see data/README.md for expected layout
 ```
 

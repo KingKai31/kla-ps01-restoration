@@ -4,6 +4,15 @@ Restores semiconductor inspection images degraded by simultaneous
 multiplicative speckle noise, additive noise, and spatial downsampling
 (128×128 → 256×256).
 
+**Note on this document's citations:** `run.py` itself is fully
+self-contained (see Setup below) — but this README, as supporting
+evidence, cites a few files (`tests/test_run_py_robustness.py`,
+`reports/ppt_metrics_table.md`) that live in the parent development
+repository this submission folder was copied from, not inside this folder
+itself. If you only have this `submission/Phoenix/` folder in isolation,
+those specific citations won't resolve locally — everything needed to
+*run* the model is still entirely contained here regardless.
+
 ## Setup
 
 Requires Python 3.11 (tested on 3.11.9) and an NVIDIA GPU with drivers
@@ -80,7 +89,7 @@ python run.py ./test_images ./restored_images
   wasn't.
 
 Verified with a permanent, re-runnable test suite
-(`tests/test_run_py_robustness.py`, 24 tests) covering corrupt files, wrong
+(`tests/test_run_py_robustness.py`, 25 tests) covering corrupt files, wrong
 dimensionality, NaN/Inf-contaminated pixels, all-zero/all-constant images,
 non-square images, and extreme out-of-range values - not just a one-time
 manual check.

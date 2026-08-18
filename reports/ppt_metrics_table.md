@@ -23,6 +23,18 @@ PSNR normalized to [0,1] via a fixed 20-35 dB reference range (not min-max acros
 
 **Stage B wins 2/3 scenarios** (equal-weighting and LPIPS-weighted). It only loses when LPIPS is ignored entirely (quality-only scenario, margin 1.64%) - a narrow margin, not a decisive regression. This is an honest read of a real tradeoff, not a guarantee of KLA's actual scoring outcome.
 
+## Statistical significance (Stage A vs Stage B, paired, n=506)
+
+Paired Wilcoxon signed-rank test (non-parametric, makes no normality assumption) on the same val images scored by both models - answers whether each metric's change is statistically real or could be noise, not just which mean is bigger. Bootstrap 95% CI (1000 resamples) for the mean difference (B-A) reported alongside.
+
+| Metric | Mean A | Mean B | Mean diff (B-A) | 95% CI | Wilcoxon p-value | Significant (p<0.05)? |
+|---|---|---|---|---|---|---|
+| PSNR | 28.2650 | 28.0859 | -0.1791 | [-0.2027, -0.1568] | 3.54e-47 | **Yes** |
+| SSIM | 0.7404 | 0.7312 | -0.0093 | [-0.0105, -0.0080] | 2.80e-45 | **Yes** |
+| LPIPS | 0.2889 | 0.1627 | -0.1262 | [-0.1362, -0.1162] | 9.67e-79 | **Yes** |
+
+**PSNR, SSIM, LPIPS changes are statistically significant (p<0.05).**
+
 ## Inference time (feasibility slide)
 
 **76.4 ms/image on NVIDIA H100 SXM 80GB** (3.819s total for a 50-image batch)

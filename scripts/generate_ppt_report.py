@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
+from scipy.stats import wilcoxon
 from skimage.metrics import peak_signal_noise_ratio as sk_psnr
 from skimage.metrics import structural_similarity as sk_ssim
 
@@ -155,6 +156,65 @@ def composite_score_table(vi, viB):
     return lines
 
 
+def statistical_significance_table(stageA_csv, stageB_csv, n_bootstrap=1000, seed=0):
+    """Paired Wilcoxon signed-rank test (non-parametric, no normality
+    assumption) on the same val images scored by both models, plus
+    bootstrap 95% CIs for the mean difference - answers "is this
+    improvement real or noise" directly, not just "which number is
+    bigger". Requires per-image CSVs with matching file sets/order
+    (scripts/compute_per_image_metrics.py produces these, sorted by
+    filename, so Stage A and B are directly pairable)."""
+    dfA = pd.read_csv(stageA_csv).sort_values("file").reset_index(drop=True)
+    dfB = pd.read_csv(stageB_csv).sort_values("file").reset_index(drop=True)
+    if not (dfA["file"] == dfB["file"]).all():
+        raise ValueError("Stage A and Stage B per-image CSVs don't cover the same files in the same "
+                          "order - not validly pairable for a paired test. Regenerate both via "
+                          "scripts/compute_per_image_metrics.py against the same --split-csv.")
+
+    rng = np.random.default_rng(seed)
+    n = len(dfA)
+    lines = [
+        "",
+        f"## Statistical significance (Stage A vs Stage B, paired, n={n})",
+        "",
+        "Paired Wilcoxon signed-rank test (non-parametric, makes no normality assumption) on the "
+        "same val images scored by both models - answers whether each metric's change is "
+        f"statistically real or could be noise, not just which mean is bigger. Bootstrap 95% CI "
+        f"({n_bootstrap} resamples) for the mean difference (B-A) reported alongside.",
+        "",
+        "| Metric | Mean A | Mean B | Mean diff (B-A) | 95% CI | Wilcoxon p-value | Significant (p<0.05)? |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    results = {}
+    for metric in ("psnr", "ssim", "lpips"):
+        a = dfA[metric].to_numpy()
+        b = dfB[metric].to_numpy()
+        diff = b - a
+        stat, p = wilcoxon(a, b)
+        boot_means = np.empty(n_bootstrap)
+        for i in range(n_bootstrap):
+            idx = rng.integers(0, n, n)
+            boot_means[i] = diff[idx].mean()
+        ci_low, ci_high = np.percentile(boot_means, [2.5, 97.5])
+        sig = p < 0.05
+        results[metric] = {"p": p, "sig": sig, "diff": diff.mean(), "ci": (ci_low, ci_high)}
+        lines.append(f"| {metric.upper()} | {a.mean():.4f} | {b.mean():.4f} | {diff.mean():+.4f} | "
+                      f"[{ci_low:+.4f}, {ci_high:+.4f}] | {p:.2e} | {'**Yes**' if sig else 'No'} |")
+
+    lines.append("")
+    sig_metrics = [m.upper() for m, r in results.items() if r["sig"]]
+    nonsig_metrics = [m.upper() for m, r in results.items() if not r["sig"]]
+    parts = []
+    if sig_metrics:
+        parts.append(f"{', '.join(sig_metrics)} change{'s are' if len(sig_metrics) > 1 else ' is'} "
+                      f"statistically significant (p<0.05)")
+    if nonsig_metrics:
+        parts.append(f"{', '.join(nonsig_metrics)} change{'s are' if len(nonsig_metrics) > 1 else ' is'} "
+                      f"NOT statistically significant at n={n}")
+    lines.append("**" + "; ".join(parts) + ".**")
+    return lines
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gt-dir", type=Path, required=True)
@@ -173,6 +233,10 @@ def main():
     ap.add_argument("--h100-total-time-s", type=float, default=None)
     ap.add_argument("--h100-gpu-name", type=str, default="NVIDIA H100 SXM 80GB")
     ap.add_argument("--h100-method-note", type=str, default=None)
+    ap.add_argument("--stageA-per-image-csv", type=Path, default=Path("reports/stageA_val_per_image_metrics.csv"),
+                     help="Per-image metrics CSV from scripts/compute_per_image_metrics.py - if both this and "
+                          "--stageB-per-image-csv exist, adds the paired statistical significance section")
+    ap.add_argument("--stageB-per-image-csv", type=Path, default=Path("reports/stageB_val_per_image_metrics.csv"))
     ap.add_argument("--out-dir", type=Path, default=Path("reports"))
     args = ap.parse_args()
 
@@ -218,6 +282,13 @@ def main():
                       f"and log retrieval was attempted but not recoverable) - closed as a line of investigation; "
                       f"the best-by-val-PSNR checkpoint stands as the shipped artifact.")
         lines.extend(composite_score_table(vi, viB))
+
+        if args.stageA_per_image_csv.exists() and args.stageB_per_image_csv.exists():
+            lines.extend(statistical_significance_table(args.stageA_per_image_csv, args.stageB_per_image_csv))
+        else:
+            print(f"Skipping statistical significance section - missing per-image CSV "
+                  f"({args.stageA_per_image_csv} exists={args.stageA_per_image_csv.exists()}, "
+                  f"{args.stageB_per_image_csv} exists={args.stageB_per_image_csv.exists()})")
     else:
         lines.append("| B (KLA+external) | Val/OOD-proxy | *pending* | *pending* | *pending* | *pending* |")
 
@@ -233,7 +304,7 @@ def main():
             lines.append(args.h100_method_note)
 
     table_md = "\n".join(lines)
-    with open(args.out_dir / "ppt_metrics_table.md", "w") as f:
+    with open(args.out_dir / "ppt_metrics_table.md", "w", encoding="utf-8") as f:
         f.write(table_md + "\n")
     print("\n" + table_md + "\n")
 

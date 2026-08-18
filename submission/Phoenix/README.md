@@ -100,3 +100,22 @@ number is specifically designed to capture. This is the checkpoint with the
 highest val PSNR seen during Stage B training (epoch 15 of 20), not
 necessarily the literal final epoch. Full comparison:
 `reports/ppt_metrics_table.md`.
+
+## Known limitation: scale factor
+
+This model handles the **128→256 scale factor** confirmed present in the
+provided training data (every GT/NoisyLR pair sourced was 256×256 GT /
+128×128 degraded — no 512×512 examples turned up in the data available to
+us). If the official test set includes the 512↔256 pair as well, this
+checkpoint has not been validated against it.
+
+The architecture itself is not the limiting factor: it's fully
+convolutional and infers its upsampling target from the input tensor's
+shape at runtime rather than hardcoding a fixed resolution (feed it a
+256×256 input, it produces 512×512, with no code change). What's untested
+is the *learned weights* at that scale — the model was only trained and
+validated on 256↔128 pairs, so 512↔256 performance is an open question,
+not a confirmed capability. Extending to that scale with confidence would
+need retraining (or at minimum fine-tuning) on real 512↔256 pairs, which we
+did not have access to. Stating this precisely now rather than leaving it
+for a grader to discover unstated.

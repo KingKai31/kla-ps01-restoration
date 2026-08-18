@@ -41,11 +41,13 @@ Bicubic upsample + non-local-means denoise (skimage.restoration.denoise_nl_means
 
 | Method | PSNR | SSIM | LPIPS |
 |---|---|---|---|
-| Classical (bicubic + NLM) | 20.56 | 0.370 | 0.564 |
+| Classical (bicubic + NLM) | 20.58 | 0.374 | 0.562 |
 | Stage A (NAFNet, KLA-only) | 28.26 | 0.740 | 0.289 |
 | Stage B (NAFNet, KLA+external) | 28.09 | 0.731 | 0.163 |
 
-**The AI model gains 7.7dB PSNR over the classical baseline (Stage A) / 7.5dB (Stage B)**, roughly 2.0x-2.0x SSIM, and 2.0x-3.5x better LPIPS (lower is better) - not a marginal gain over a naive approach.
+**The AI model gains 7.7dB PSNR over the classical baseline (Stage A) / 7.5dB (Stage B)**, roughly 2.0x-2.0x SSIM, and 1.9x-3.5x better LPIPS (lower is better) - not a marginal gain over a naive approach.
+
+**Correctness note (found and fixed during the final rigor pass):** `scikit-image`'s `estimate_sigma()` - used inside `classical_fallback()` to set the NLM denoising strength - has an undeclared optional dependency on `PyWavelets`. Neither `requirements.txt` pinned it, so on any environment without it (including the one this table was first generated in), `estimate_sigma()` raised `ImportError`, which `classical_fallback()`'s broad exception handler silently caught and fell back to bicubic-only - meaning the NLM denoising step never actually executed, contrary to what "bicubic + NLM" implied. Confirmed directly (the earlier numbers matched a manually-recomputed bicubic-only baseline to 6 decimal places) and fixed by pinning `PyWavelets` in both `requirements.txt` files - verified installing cleanly in a fresh venv, and verified `denoise_nl_means` now actually perturbs the output versus bicubic alone. The numbers above are the corrected, NLM-active run. The practical effect on this specific data was small (bicubic upsampling already leaves little residual noise for NLM to remove, so old vs corrected PSNR/SSIM/LPIPS differ by <0.02 in every metric) - the AI-vs-classical gap claim above is materially unchanged, but the fallback path run.py actually ships now correctly matches its own documentation instead of silently degrading further on a missing dependency.
 
 ## GT noise-ceiling sanity check
 

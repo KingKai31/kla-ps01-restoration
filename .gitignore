@@ -32,3 +32,8 @@ outputs/*
 /_to_delete_data_chunks/
 /_split.log
 /*.zip
+
+# Scratch working files from scripts/scale_generalization_test.py (raw
+# .npy inputs/outputs) - the deliverable is the summary CSV it also
+# writes to reports/, not these intermediates
+reports/_scale_gen_test_tmp/

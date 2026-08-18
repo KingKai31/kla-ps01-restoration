@@ -6,6 +6,7 @@ filelock==3.32.3
 fonttools==4.63.0
 fsspec==2026.7.0
 ImageIO==2.37.4
+iniconfig==2.3.0
 Jinja2==3.1.6
 joblib==1.5.3
 kiwisolver==1.5.0
@@ -20,9 +21,13 @@ numpy==2.4.6
 packaging==26.3
 pandas==3.0.5
 pillow==12.3.0
+pluggy==1.6.0
+Pygments==2.21.0
 pyparsing==3.3.2
+pytest==9.1.1
 python-dateutil==2.9.0.post0
 pytorch-msssim==1.0.0
+PyWavelets==1.9.0
 scikit-image==0.26.0
 scikit-learn==1.9.0
 scipy==1.17.1
@@ -31,7 +36,6 @@ sympy==1.13.1
 threadpoolctl==3.6.0
 tifffile==2026.3.3
 torch==2.5.1+cu121
-torchaudio==2.5.1+cu121
 torchvision==0.20.1+cu121
 tqdm==4.70.0
 typing_extensions==4.16.0

@@ -130,7 +130,8 @@ submission/Phoenix/         the actual submission package - self-contained run.p
 requirements.txt            pip freeze from the training environment
 checkpoints/                trained weights (not committed - see checkpoints/README)
 outputs/                    restored images produced by run.py
-tests/                      formal pytest suite (run.py robustness/edge-case coverage)
+tests/                      formal pytest suite (run.py robustness/edge-case coverage,
+                             including the PyWavelets dependency-gap regression check)
 reports/                    Phase 1 analysis outputs, metrics tables, figures
 data/                       not committed - see data/README.md for expected layout
 ```

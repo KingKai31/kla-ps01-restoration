@@ -85,6 +85,21 @@ dimensionality, NaN/Inf-contaminated pixels, all-zero/all-constant images,
 non-square images, and extreme out-of-range values - not just a one-time
 manual check.
 
+**Real bug found and fixed:** the classical fallback's `estimate_sigma()`
+call (scikit-image) has an undeclared dependency on `PyWavelets` - without
+it, `estimate_sigma()` raises `ImportError`, which the fallback's broad
+exception handler silently caught, downgrading every fallback to
+bicubic-only with no NLM denoising and no visible warning. `requirements.txt`
+never pinned it. Found while running an unrelated test (Task 1 of the final
+rigor pass), confirmed directly (the previously-reported "classical
+baseline" numbers matched a bicubic-only recomputation to 6 decimal
+places), and fixed by pinning `PyWavelets==1.9.0` here - verified
+installing cleanly in a fresh venv and verified `denoise_nl_means` now
+actually executes and perturbs the output. See
+`reports/ppt_metrics_table.md`'s Classical baseline comparison section for
+the corrected numbers (the practical difference was small, <0.02 on every
+metric, but the fallback now genuinely matches its own documentation).
+
 **Real finding from that suite, disclosed rather than left for a grader to
 find:** any input **8px or smaller on either side** fails inside the
 model's own forward pass (NAFNetSR reflect-pads up to a 16px alignment

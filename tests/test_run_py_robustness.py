@@ -299,3 +299,33 @@ class TestClassicalFallback:
         out = run_module.classical_fallback(arr, scale=2)
         assert out.shape == (40, 60)
         _assert_spec_compliant(out)
+
+    def test_nlm_denoising_actually_executes(self, run_module):
+        """Regression test for a real bug found during the final rigor
+        pass: scikit-image's estimate_sigma() (called inside
+        classical_fallback() to set the NLM denoise strength) has an
+        undeclared dependency on PyWavelets. Without it, estimate_sigma()
+        raises ImportError, which classical_fallback()'s broad except
+        silently caught, downgrading every fallback to bicubic-only with
+        no visible warning - confirmed directly (the previously-reported
+        classical baseline numbers matched a bicubic-only recomputation
+        to 6 decimal places) before PyWavelets was pinned in both
+        requirements.txt files. This test fails loudly if that regresses:
+        it compares classical_fallback()'s real output against a
+        bicubic-only reimplementation of the same upscale step and
+        requires them to differ - if NLM silently stops running again
+        (missing dependency, changed exception handling, etc.), the two
+        would go back to being identical and this test would catch it."""
+        from skimage.transform import resize as sk_resize
+
+        arr = np.random.default_rng(0).random((64, 64)).astype(np.float32)
+        out = run_module.classical_fallback(arr, scale=2)
+
+        bicubic_only = sk_resize(arr, (128, 128), order=3, mode="reflect", anti_aliasing=True)
+        bicubic_only = np.clip(bicubic_only, 0.0, 1.0).astype(np.float32)
+
+        assert not np.allclose(out, bicubic_only, atol=1e-6), (
+            "classical_fallback() output is identical to a plain bicubic upscale - "
+            "NLM denoising did not actually run (likely PyWavelets missing again, "
+            "silently swallowed by the broad except in classical_fallback())"
+        )

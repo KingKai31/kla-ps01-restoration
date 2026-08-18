@@ -37,3 +37,11 @@ outputs/*
 # .npy inputs/outputs) - the deliverable is the summary CSV it also
 # writes to reports/, not these intermediates
 reports/_scale_gen_test_tmp/
+
+# scripts/quick_test_visualize.py output - ad-hoc personal confidence-checks
+# and PPT example-pulling, not project deliverables. Narrowly scoped by
+# exact filename prefix (not a blanket reports/figures/*.png rule - see the
+# comment above re: the prior incident where a blanket rule swallowed real
+# deliverables). Working temp dir also excluded.
+reports/figures/quick_test_*.png
+reports/figures/_quick_test_tmp/

@@ -19,9 +19,10 @@ at time of writing - `git log --oneline -1` on both local and origin match).
 
 Every KLA hard-gate requirement passes, re-verified fresh today against the
 exact shipped checkpoint and the exact `requirements.txt` files as they
-currently exist. One item remains open (loss-ablation integration, Task 4)
-but it is supplementary analysis, not a hard gate - it does not block
-submission readiness.
+currently exist. The loss-term ablation (Task 4, see Section E) was
+dropped by explicit decision rather than left pending - it was always
+supplementary analysis, never a hard gate, and its absence does not affect
+this verdict.
 
 ---
 
@@ -140,13 +141,15 @@ verification pass, cited here for completeness.
 
 ---
 
-## E. Open items (not blocking)
+## E. Dropped, not pending
 
-- **Task 4 - loss-ablation integration:** three short Kaggle training runs
-  (isolating Sobel edge loss and range-consistency loss's individual
-  contributions) were launched via `reports/loss_ablation_handoff.md` and
-  have not yet returned. This is supplementary analysis explaining *why*
-  the composite loss works, not a requirement for the model to work or
-  for the submission to be valid - Stage B ships and performs as
-  documented in Section B regardless of this result. Will be integrated
-  into `reports/ppt_metrics_table.md` when it lands.
+- **Task 4 - loss-ablation integration: dropped by explicit decision, not
+  outstanding.** Three short Kaggle training runs (isolating Sobel edge
+  loss and range-consistency loss's individual contributions) were
+  launched via `reports/loss_ablation_handoff.md`. The Kaggle sessions
+  running them became stuck/unresponsive across multiple attempts;
+  decision made to stop waiting rather than keep re-attempting. This was
+  always supplementary analysis explaining *why* the composite loss
+  works, never a requirement for the model to work or for the submission
+  to be valid - Stage B ships and performs exactly as documented in
+  Section B with or without it. No further action planned on this.

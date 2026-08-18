@@ -1,5 +1,14 @@
 # Loss-term ablation — Kaggle handoff
 
+**STATUS: DROPPED, not pending.** The Kaggle sessions running these three
+configs became stuck/unresponsive across multiple attempts. Decision made
+to stop waiting rather than keep re-attempting - this was always
+supplementary analysis (explaining *why* the composite loss works, one
+bullet on the Innovation slide), not a requirement for Stage B itself,
+which ships and performs as documented in `reports/ppt_metrics_table.md`
+regardless. No further action planned; kept below as a historical record
+of what was attempted and the exact commands used, not as an open TODO.
+
 **Goal:** isolate which composite-loss term(s) drove Stage B's LPIPS
 improvement (0.289→0.163) — currently only known that the full stack
 together did it. Three short (not-fully-converged) runs, directional

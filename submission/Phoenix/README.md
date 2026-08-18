@@ -250,14 +250,13 @@ out of scope for this check):
   This is a genuine limit on what's answerable from the existing
   checkpoint alone, not a gap we're eliding.
 - **What would give a real answer:** a DTD+SAR-only Stage B variant, same
-  training recipe and epoch budget as the loss-ablation runs already
-  planned for this pass, would directly test whether dropping DIV2K/
-  Flickr2K costs meaningfully - it's a natural extension of ablation
-  infrastructure that already exists, not new engineering. Not run in
-  this pass (retraining was explicitly out of scope here) - flagged as a
-  concrete, cheap, ready-to-launch next step if this license question
-  ever becomes practically important, rather than left as a vague future
-  todo.
+  training recipe and epoch budget used elsewhere in this project, would
+  directly test whether dropping DIV2K/Flickr2K costs meaningfully - it's
+  a natural extension of the `train_stageB.py` infrastructure that already
+  exists, not new engineering. Not run in this pass (retraining was
+  explicitly out of scope here) - flagged as a concrete, cheap,
+  ready-to-launch next step if this license question ever becomes
+  practically important, rather than left as a vague future todo.
 
 ## Reproducibility
 

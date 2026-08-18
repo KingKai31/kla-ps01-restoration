@@ -146,19 +146,36 @@ comparison: `reports/ppt_metrics_table.md`.
 This model handles the **128→256 scale factor** confirmed present in the
 provided training data (every GT/NoisyLR pair sourced was 256×256 GT /
 128×128 degraded — no 512×512 examples turned up in the data available to
-us). If the official test set includes the 512↔256 pair as well, this
-checkpoint has not been validated against it.
+us). If the official test set includes the 512↔256 pair as well: the
+checkpoint's *learned weights* have not been trained on real data at that
+resolution, but the *architecture's mechanical ability to run at that
+resolution* has now been directly tested (see below), not left as an
+untested assumption.
 
 The architecture itself is not the limiting factor: it's fully
-convolutional and infers its upsampling target from the input tensor's
-shape at runtime rather than hardcoding a fixed resolution (feed it a
-256×256 input, it produces 512×512, with no code change). What's untested
-is the *learned weights* at that scale — the model was only trained and
-validated on 256↔128 pairs, so 512↔256 performance is an open question,
-not a confirmed capability. Extending to that scale with confidence would
+convolutional and accepts any input shape at runtime rather than hardcoding
+a fixed resolution (feed it a 256×256 input, it produces 512×512, with no
+code change) — confirmed by direct inspection, the checkpoint's `upscale`
+factor is a fixed 2× regardless of input size, and internal padding to a
+16px alignment multiple is computed from the input tensor's own shape at
+runtime.
+
+**Tested, not just claimed:** ran the real `run.py` path against 15
+256×256 synthetic test inputs (2× the resolution it was trained at) and it
+produced correct, spec-compliant 512×512 output on every single one — zero
+crashes, zero fallback triggers — clearly outperforming both a bicubic
+baseline and the classical bicubic+NLM fallback at the same task (see
+`reports/ppt_metrics_table.md`'s Scale generalization section for the full
+table and methodology). **This confirms the architecture generalizes
+mechanically to an untrained input resolution.** What remains genuinely
+untested: real reconstruction quality at a true higher resolution — no
+real 512×512+ KLA source images exist to build a real test against, so the
+test above used a bicubic-upscaled pseudo-GT with no real fine detail
+beyond what bicubic interpolation produces. That's a meaningfully weaker
+claim than "verified at real 512", and the metrics table is explicit about
+not overstating it. Extending to that scale with confidence would still
 need retraining (or at minimum fine-tuning) on real 512↔256 pairs, which we
-did not have access to. Stating this precisely now rather than leaving it
-for a grader to discover unstated.
+did not have access to.
 
 ## Data sources & licensing
 

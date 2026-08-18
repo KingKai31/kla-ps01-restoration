@@ -81,10 +81,22 @@ Decomposed as `NoisyLR = GT_down * M + A`:
   training data.** The problem statement describes two degradation pairs
   (512→256 and 256→128), but every GT/NoisyLR pair sourced so far is
   256×256 GT / 128×128 degraded — no 512×512 examples have turned up locally.
-  Phase 2's architecture infers the target upsampling factor from the input
-  tensor's shape at runtime (rather than hardcoding a fixed 2x/4x factor), so
-  it is forward-compatible if 512↔256 data is released later, but it has
-  only been trained/validated on 256↔128 so far.
+  Correction to an earlier version of this note: the architecture's `upscale`
+  factor is a **fixed 2× baked into the checkpoint**, not inferred from input
+  shape — what's inferred at runtime is only the input's H/W, which the
+  model pads to a 16px alignment multiple before its fixed-2× head. So this
+  is a resolution-generalization question (does 256→512 work, given the
+  model only saw 128→256), not a ratio question (both pairs are 2×). Tested
+  directly, not just claimed forward-compatible: ran the real `run.py` path
+  against 15 synthetic 256×256 inputs and it produced correct, spec-compliant
+  512×512 output on every one, clearly beating both a bicubic and a
+  bicubic+NLM baseline at the task - see `reports/ppt_metrics_table.md`'s
+  Scale generalization section. That confirms mechanical/architectural
+  generalization; it does **not** confirm real reconstruction quality at a
+  true higher resolution, since no real 512×512+ KLA source data exists to
+  test against (the test's pseudo-GT is a bicubic upscale with no real fine
+  detail beyond what bicubic already produces - stated explicitly in the
+  table so the result isn't overread).
 - **Any input 8px or smaller on either side falls back to the classical
   (lower-quality) restoration path instead of the trained model.** Found
   via `tests/test_run_py_robustness.py` (formal, re-runnable suite - see

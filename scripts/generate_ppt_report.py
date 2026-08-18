@@ -364,6 +364,67 @@ def gt_noise_ceiling_table(csv_path, vi, viB):
     ]
 
 
+def scale_generalization_table(csv_path, viB):
+    """Task 1 of the final rigor pass: the shipped checkpoint was trained
+    and validated ONLY at 128->256. This tests whether it still produces
+    sensible output at 256->512 (2x the absolute resolution it saw during
+    training - the architecture always applies a fixed 2x upsample baked
+    into the checkpoint, confirmed by direct inspection, so this is a
+    resolution-generalization test, not a ratio test). See
+    scripts/scale_generalization_test.py for the full methodology."""
+    df = pd.read_csv(csv_path)
+    n = len(df)
+    return [
+        "",
+        "## Scale generalization test (256->512, an untrained resolution)",
+        "",
+        f"The shipped checkpoint has only ever been trained/validated at 128->256. Tested it at "
+        f"256->512 on {n} synthetic pairs: real KLA GT images bicubic-upscaled to a pseudo-512 "
+        f"target, then degraded back down to a 256x256 input with the exact same validated noise "
+        f"model used everywhere else in this project (factor=2, same "
+        f"`SpeckleAdditiveDegrader`).",
+        "",
+        "**Methodology limitation, stated up front:** KLA has no real 512x512+ source images "
+        "available to us. The pseudo-512 \"ground truth\" here is a clean bicubic upscale of a "
+        "native 256x256 image - it contains no real fine detail beyond what bicubic interpolation "
+        "already produces. This test validly answers *does the model's code path handle a "
+        "differently-shaped input without crashing or producing garbage, and does it still clearly "
+        "beat naive upscaling of the same input* - it does NOT validly answer *does the model "
+        "recover genuine fine structure at a real higher resolution*, since no real high-frequency "
+        "content exists in the target to recover. That second, stronger claim remains untested and "
+        "should not be inferred from this result.",
+        "",
+        "| Method | PSNR | SSIM | LPIPS |",
+        "|---|---|---|---|",
+        f"| Model (run.py, trained only at 128->256) | {df['model_psnr'].mean():.2f} | "
+        f"{df['model_ssim'].mean():.4f} | {df['model_lpips'].mean():.4f} |",
+        f"| Bicubic baseline (same input, no denoise) | {df['bicubic_psnr'].mean():.2f} | "
+        f"{df['bicubic_ssim'].mean():.4f} | {df['bicubic_lpips'].mean():.4f} |",
+        f"| Classical fallback (bicubic + NLM, run.py's real fallback) | {df['classical_psnr'].mean():.2f} | "
+        f"{df['classical_ssim'].mean():.4f} | {df['classical_lpips'].mean():.4f} |",
+        "",
+        f"**Result: the model ran successfully on all {n} images (zero crashes, zero fallback "
+        f"triggers, every output correctly shaped 512x512 and spec-compliant) and clearly "
+        f"outperformed both baselines** - "
+        f"{df['model_psnr'].mean() - df['classical_psnr'].mean():+.1f}dB PSNR over the classical "
+        f"fallback, a large SSIM/LPIPS gap in the same direction. This confirms genuine "
+        f"architectural/mechanism generalization: the fully-convolutional design with runtime "
+        f"padding to a multiple of 16 does not require retraining to accept a differently-sized "
+        f"input, and whatever it learned about denoising/upsampling from 128->256 training transfers "
+        f"usefully to a 256->512 input rather than collapsing into noise or artifacts.",
+        "",
+        f"**What NOT to conclude from this:** the model's PSNR here ({df['model_psnr'].mean():.2f}dB) "
+        f"is numerically higher than its real 128->256 val PSNR ({viB['psnr_mean']:.2f}dB) - this is "
+        f"an artifact of the pseudo-GT's lack of real fine detail (a smoother target is mechanically "
+        f"easier to hit with high PSNR), **not evidence the model performs better at higher "
+        f"resolution**. Do not cite this comparison as a quality claim. The honest, testable claim "
+        f"for the feasibility slide is: *the architecture is confirmed to generalize mechanically to "
+        f"an untrained input resolution, verified end-to-end through the real run.py path* - real "
+        f"higher-resolution reconstruction quality (e.g. against a true 512<->256 KLA test pair, if "
+        f"released) remains unverified.",
+    ]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gt-dir", type=Path, required=True)
@@ -401,6 +462,9 @@ def main():
     ap.add_argument("--perf-n-timing", type=int, default=None)
     ap.add_argument("--gt-noise-csv", type=Path, default=Path("reports/gt_noise_ceiling_check.csv"),
                      help="From scripts/gt_noise_ceiling_check.py - adds the GT noise-ceiling section if present")
+    ap.add_argument("--scale-gen-csv", type=Path,
+                     default=Path("reports/scale_generalization_256to512_test.csv"),
+                     help="From scripts/scale_generalization_test.py - adds the scale-generalization section if present")
     ap.add_argument("--out-dir", type=Path, default=Path("reports"))
     args = ap.parse_args()
 
@@ -463,6 +527,11 @@ def main():
             lines.extend(gt_noise_ceiling_table(args.gt_noise_csv, vi, viB))
         else:
             print(f"Skipping GT noise-ceiling section - {args.gt_noise_csv} not found")
+
+        if args.scale_gen_csv.exists():
+            lines.extend(scale_generalization_table(args.scale_gen_csv, viB))
+        else:
+            print(f"Skipping scale-generalization section - {args.scale_gen_csv} not found")
     else:
         lines.append("| B (KLA+external) | Val/OOD-proxy | *pending* | *pending* | *pending* | *pending* |")
 

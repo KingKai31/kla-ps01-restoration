@@ -55,6 +55,22 @@ Checked whether KLA's GT images are a perfectly clean reference or carry residua
 
 **Finding: GT appears visually clean in flat/smooth regions - no obvious residual noise floor detected.** Mean flattest-region std across 15 images: 0.0157 (implied PSNR ceiling if this were a true noise floor: 36.1 dB - well above both Stage A's 28.26dB and Stage B's 28.09dB, so even if real, it isn't the binding constraint on current results). A handful of images showed higher flat-region variance (0.0577 at the max) - checked these individually (reports/figures/gt_noise_ceiling_outliers.png) and confirmed they're texture-dense images (grass, dense forest) with no genuinely flat region anywhere, not evidence of noise - the 'flattest 5%' statistic on a busy image still reflects real fine structure. Checked, not assumed: the outliers were individually visually verified, not waved away.
 
+## Scale generalization test (256->512, an untrained resolution)
+
+The shipped checkpoint has only ever been trained/validated at 128->256. Tested it at 256->512 on 15 synthetic pairs: real KLA GT images bicubic-upscaled to a pseudo-512 target, then degraded back down to a 256x256 input with the exact same validated noise model used everywhere else in this project (factor=2, same `SpeckleAdditiveDegrader`).
+
+**Methodology limitation, stated up front:** KLA has no real 512x512+ source images available to us. The pseudo-512 "ground truth" here is a clean bicubic upscale of a native 256x256 image - it contains no real fine detail beyond what bicubic interpolation already produces. This test validly answers *does the model's code path handle a differently-shaped input without crashing or producing garbage, and does it still clearly beat naive upscaling of the same input* - it does NOT validly answer *does the model recover genuine fine structure at a real higher resolution*, since no real high-frequency content exists in the target to recover. That second, stronger claim remains untested and should not be inferred from this result.
+
+| Method | PSNR | SSIM | LPIPS |
+|---|---|---|---|
+| Model (run.py, trained only at 128->256) | 29.99 | 0.8323 | 0.2100 |
+| Bicubic baseline (same input, no denoise) | 21.70 | 0.4523 | 0.5031 |
+| Classical fallback (bicubic + NLM, run.py's real fallback) | 21.73 | 0.4569 | 0.5004 |
+
+**Result: the model ran successfully on all 15 images (zero crashes, zero fallback triggers, every output correctly shaped 512x512 and spec-compliant) and clearly outperformed both baselines** - +8.3dB PSNR over the classical fallback, a large SSIM/LPIPS gap in the same direction. This confirms genuine architectural/mechanism generalization: the fully-convolutional design with runtime padding to a multiple of 16 does not require retraining to accept a differently-sized input, and whatever it learned about denoising/upsampling from 128->256 training transfers usefully to a 256->512 input rather than collapsing into noise or artifacts.
+
+**What NOT to conclude from this:** the model's PSNR here (29.99dB) is numerically higher than its real 128->256 val PSNR (28.09dB) - this is an artifact of the pseudo-GT's lack of real fine detail (a smoother target is mechanically easier to hit with high PSNR), **not evidence the model performs better at higher resolution**. Do not cite this comparison as a quality claim. The honest, testable claim for the feasibility slide is: *the architecture is confirmed to generalize mechanically to an untrained input resolution, verified end-to-end through the real run.py path* - real higher-resolution reconstruction quality (e.g. against a true 512<->256 KLA test pair, if released) remains unverified.
+
 ## Inference time (feasibility slide)
 
 **76.4 ms/image on NVIDIA H100 SXM 80GB** (3.819s total for a 50-image batch)

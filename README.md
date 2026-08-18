@@ -85,6 +85,19 @@ Decomposed as `NoisyLR = GT_down * M + A`:
   tensor's shape at runtime (rather than hardcoding a fixed 2x/4x factor), so
   it is forward-compatible if 512↔256 data is released later, but it has
   only been trained/validated on 256↔128 so far.
+- **Any input 8px or smaller on either side falls back to the classical
+  (lower-quality) restoration path instead of the trained model.** Found
+  via `tests/test_run_py_robustness.py` (formal, re-runnable suite - see
+  below), not previously known: `NAFNetSR`'s forward pass reflect-pads
+  each input up to a 16px alignment multiple, and PyTorch's reflect
+  padding requires the pad amount to be strictly less than the input
+  dimension - an 8px side needs an 8px pad, which violates that
+  constraint and raises inside the model. `run.py`'s per-image exception
+  handling catches this and correctly falls back to classical bicubic+NLM,
+  so the batch never crashes and the output stays spec-compliant, but
+  quality silently degrades for any image at or below this threshold. Not
+  expected to matter for KLA's actual 128x128 data (far above the
+  threshold), but disclosed precisely rather than left undiscovered.
 - **The external-dataset case-duplicate dedup logic
   (`src/datasets/external_image_dataset.py`) exists but was never exercised
   by the actual Stage B run.** It guards against double-counting images
@@ -117,6 +130,7 @@ submission/Phoenix/         the actual submission package - self-contained run.p
 requirements.txt            pip freeze from the training environment
 checkpoints/                trained weights (not committed - see checkpoints/README)
 outputs/                    restored images produced by run.py
+tests/                      formal pytest suite (run.py robustness/edge-case coverage)
 reports/                    Phase 1 analysis outputs, metrics tables, figures
 data/                       not committed - see data/README.md for expected layout
 ```

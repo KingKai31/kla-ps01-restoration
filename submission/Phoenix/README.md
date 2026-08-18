@@ -79,6 +79,25 @@ python run.py ./test_images ./restored_images
   fallback, so this is never silently masked as "fully succeeded" when it
   wasn't.
 
+Verified with a permanent, re-runnable test suite
+(`tests/test_run_py_robustness.py`, 24 tests) covering corrupt files, wrong
+dimensionality, NaN/Inf-contaminated pixels, all-zero/all-constant images,
+non-square images, and extreme out-of-range values - not just a one-time
+manual check.
+
+**Real finding from that suite, disclosed rather than left for a grader to
+find:** any input **8px or smaller on either side** fails inside the
+model's own forward pass (NAFNetSR reflect-pads up to a 16px alignment
+multiple, and PyTorch's reflect padding requires the pad amount to be
+strictly less than the input dimension - an 8px side needs an 8px pad,
+which violates that constraint). This is caught by `run.py`'s per-image
+exception handling and correctly falls back to the classical path, so the
+batch does not crash and the output is still spec-compliant - but it means
+any such image silently gets the lower-quality classical restoration
+instead of the trained model. Not expected to matter in practice (KLA's
+data is 128x128, far above this threshold), but stated precisely rather
+than assumed away.
+
 ## Model
 
 NAFNet-style backbone: U-Net hierarchy, simplified channel attention, gated

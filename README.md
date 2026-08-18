@@ -27,7 +27,10 @@ source of truth for every number in this project):
 
 Measured end-to-end inference: **76.4 ms/image on H100 SXM 80GB**. The
 submission package is `submission/Phoenix/` — see its own README for the
-exact run instructions and compliance detail.
+exact run instructions and compliance detail. Every KLA hard-gate
+requirement (exact CLI, output spec, folder structure, zero-internet,
+fresh-venv install) is re-verified fresh with real evidence in
+[reports/FINAL_SUBMISSION_VERIFICATION.md](reports/FINAL_SUBMISSION_VERIFICATION.md).
 
 ### Noise-physics analysis (Phase 1 findings)
 

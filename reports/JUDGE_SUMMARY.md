@@ -90,7 +90,7 @@ of truth for every number in this project.
 
 | Question | File |
 |---|---|
-| Does it actually meet KLA's submission spec? | [submission/Phoenix/README.md](../submission/Phoenix/README.md) |
+| Does it actually meet KLA's submission spec? | [submission/Phoenix/README.md](../submission/Phoenix/README.md), fresh hard-gate re-verification with evidence: [reports/FINAL_SUBMISSION_VERIFICATION.md](FINAL_SUBMISSION_VERIFICATION.md) |
 | All metrics, statistical tests, every finding | [reports/ppt_metrics_table.md](ppt_metrics_table.md) |
 | Is it robust to bad/adversarial input? | [tests/test_run_py_robustness.py](../tests/test_run_py_robustness.py) (25 tests, all real, all passing) |
 | Full noise-physics derivation | [README.md](../README.md) |

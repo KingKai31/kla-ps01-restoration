@@ -35,8 +35,46 @@ Paired Wilcoxon signed-rank test (non-parametric, makes no normality assumption)
 
 **PSNR, SSIM, LPIPS changes are statistically significant (p<0.05).**
 
+## Classical baseline comparison (val/OOD-proxy, n=506)
+
+Bicubic upsample + non-local-means denoise (skimage.restoration.denoise_nl_means) - the same code run.py's classical_fallback() actually uses, not a separate reimplementation - evaluated on the identical 506 val images as Stage A/B.
+
+| Method | PSNR | SSIM | LPIPS |
+|---|---|---|---|
+| Classical (bicubic + NLM) | 20.56 | 0.370 | 0.564 |
+| Stage A (NAFNet, KLA-only) | 28.26 | 0.740 | 0.289 |
+| Stage B (NAFNet, KLA+external) | 28.09 | 0.731 | 0.163 |
+
+**The AI model gains 7.7dB PSNR over the classical baseline (Stage A) / 7.5dB (Stage B)**, roughly 2.0x-2.0x SSIM, and 2.0x-3.5x better LPIPS (lower is better) - not a marginal gain over a naive approach.
+
 ## Inference time (feasibility slide)
 
 **76.4 ms/image on NVIDIA H100 SXM 80GB** (3.819s total for a 50-image batch)
 
 Measured on real H100 SXM 80GB hardware (clean on-demand pod). Used a synthetic batch matching Test_NoisyLR's exact shape (128x128 float32) and value distribution (mean ~0.4-0.7, std ~0.1-0.3) rather than real Kaggle test data, since pulling that onto a throwaway pod would have needed credentials - timing is compute-graph-driven, not pixel-content-driven, so this is a faithful proxy. All 50 images succeeded via the real model path (zero fallback triggers), output shape/range confirmed compliant.
+
+## Memory footprint and latency breakdown
+
+Measured locally (not the H100) through run.py's actual code path (scripts/performance_profile.py), 50 synthetic images matching real input characteristics. Relative proportions are expected to transfer directionally to the H100; absolute numbers differ by hardware.
+
+**VRAM (peak, `torch.cuda.max_memory_allocated`):**
+
+| Scenario | Peak VRAM |
+|---|---|
+| Single image (run.py's actual per-image path) | 44.0 MB |
+| 16 images via run.py's real sequential (one-at-a-time) path | 44.3 MB |
+| *Hypothetical* genuinely-batched forward pass (batch_size=16 in one call - **not** what run.py's real code does today) | 294.9 MB |
+
+run.py processes images one at a time, not in batches - VRAM usage stays essentially flat (44.0 to 44.3 MB) regardless of how many images are in the job, since only one is ever resident at once. The batched figure is reported separately as feasibility headroom, not a claim about current behavior.
+
+**Latency breakdown (component analysis):**
+
+| Component | Time |
+|---|---|
+| Model/checkpoint load (one-time cost) | 320.6 ms total |
+| Pure forward-pass inference | 10.78 ms/image |
+| Full run.py per-image path (forward + checkerboard suppress + clamp + sanitize) | 11.45 ms/image |
+| Disk I/O (read input .npy + write output .npy) | 15.64 ms/image |
+| **Local total** (load amortized over 50 images + full path + I/O) | **33.50 ms/image** |
+
+**This local total is lower than the reported H100 figure (76.4 ms/image) - flagging this explicitly rather than letting it sit unexplained.** For a small model (6.82M params) at small resolution (128x128 input), per-image overhead can dominate over raw compute throughput: the H100 measurement is a true end-to-end figure on a cold on-demand pod (script startup, model init, and possibly network-backed storage all included per KLA's own timing definition), while this local figure is a warm, already-initialized measurement on local SSD. Both are real measurements of different things - H100 end-to-end is the correct number for the feasibility slide's headline figure; this breakdown is for understanding where time actually goes, not for replacing it.

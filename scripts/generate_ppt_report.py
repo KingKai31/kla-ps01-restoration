@@ -215,6 +215,91 @@ def statistical_significance_table(stageA_csv, stageB_csv, n_bootstrap=1000, see
     return lines
 
 
+def classical_baseline_table(classical_csv, vi, viB):
+    """Answers "how much does the AI actually buy you over the dumbest
+    reasonable approach" directly - bicubic upsample + non-local-means
+    denoise, using run.py's actual classical_fallback() code (the same
+    path run.py itself falls back to on model failure), evaluated on the
+    same val split."""
+    dfC = pd.read_csv(classical_csv)
+    lines = [
+        "",
+        "## Classical baseline comparison (val/OOD-proxy, n=506)",
+        "",
+        "Bicubic upsample + non-local-means denoise (skimage.restoration.denoise_nl_means) - "
+        "the same code run.py's classical_fallback() actually uses, not a separate reimplementation - "
+        "evaluated on the identical 506 val images as Stage A/B.",
+        "",
+        "| Method | PSNR | SSIM | LPIPS |",
+        "|---|---|---|---|",
+        f"| Classical (bicubic + NLM) | {dfC['psnr'].mean():.2f} | {dfC['ssim'].mean():.3f} | {dfC['lpips'].mean():.3f} |",
+        f"| Stage A (NAFNet, KLA-only) | {vi['psnr_mean']:.2f} | {vi['ssim_mean']:.3f} | {vi['lpips_mean']:.3f} |",
+        f"| Stage B (NAFNet, KLA+external) | {viB['psnr_mean']:.2f} | {viB['ssim_mean']:.3f} | {viB['lpips_mean']:.3f} |",
+        "",
+        f"**The AI model gains {vi['psnr_mean'] - dfC['psnr'].mean():.1f}dB PSNR over the classical "
+        f"baseline (Stage A) / {viB['psnr_mean'] - dfC['psnr'].mean():.1f}dB (Stage B)**, roughly "
+        f"{vi['ssim_mean'] / dfC['ssim'].mean():.1f}x-{viB['ssim_mean'] / dfC['ssim'].mean():.1f}x SSIM, "
+        f"and {dfC['lpips'].mean() / vi['lpips_mean']:.1f}x-{dfC['lpips'].mean() / viB['lpips_mean']:.1f}x "
+        f"better LPIPS (lower is better) - not a marginal gain over a naive approach.",
+    ]
+    return lines
+
+
+def performance_table(load_ms, pure_inference_ms, full_path_ms, disk_io_ms,
+                       vram_single_mb, vram_16_seq_mb, vram_16_batch_mb, n_timing):
+    """Component breakdown of inference time and VRAM, measured locally
+    through run.py's actual code path (not a separate benchmark harness) -
+    see scripts/performance_profile.py for methodology. Local hardware
+    numbers, reported alongside the H100 end-to-end figure which remains
+    the real feasibility number - see the note on why local can differ
+    from the H100 pod measurement."""
+    lines = [
+        "",
+        "## Memory footprint and latency breakdown",
+        "",
+        f"Measured locally (not the H100) through run.py's actual code path "
+        f"(scripts/performance_profile.py), {n_timing} synthetic images matching real input "
+        f"characteristics. Relative proportions are expected to transfer directionally to the "
+        f"H100; absolute numbers differ by hardware.",
+        "",
+        "**VRAM (peak, `torch.cuda.max_memory_allocated`):**",
+        "",
+        "| Scenario | Peak VRAM |",
+        "|---|---|",
+        f"| Single image (run.py's actual per-image path) | {vram_single_mb:.1f} MB |",
+        f"| 16 images via run.py's real sequential (one-at-a-time) path | {vram_16_seq_mb:.1f} MB |",
+        f"| *Hypothetical* genuinely-batched forward pass (batch_size=16 in one call - "
+        f"**not** what run.py's real code does today) | {vram_16_batch_mb:.1f} MB |",
+        "",
+        f"run.py processes images one at a time, not in batches - VRAM usage stays essentially flat "
+        f"({vram_single_mb:.1f} to {vram_16_seq_mb:.1f} MB) regardless of how many images are in the "
+        f"job, since only one is ever resident at once. The batched figure is reported separately as "
+        f"feasibility headroom, not a claim about current behavior.",
+        "",
+        "**Latency breakdown (component analysis):**",
+        "",
+        "| Component | Time |",
+        "|---|---|",
+        f"| Model/checkpoint load (one-time cost) | {load_ms:.1f} ms total |",
+        f"| Pure forward-pass inference | {pure_inference_ms:.2f} ms/image |",
+        f"| Full run.py per-image path (forward + checkerboard suppress + clamp + sanitize) | {full_path_ms:.2f} ms/image |",
+        f"| Disk I/O (read input .npy + write output .npy) | {disk_io_ms:.2f} ms/image |",
+        f"| **Local total** (load amortized over {n_timing} images + full path + I/O) | "
+        f"**{load_ms / n_timing + full_path_ms + disk_io_ms:.2f} ms/image** |",
+        "",
+        f"**This local total is lower than the reported H100 figure (76.4 ms/image) - flagging this "
+        f"explicitly rather than letting it sit unexplained.** For a small model (6.82M params) at "
+        f"small resolution (128x128 input), per-image overhead can dominate over raw compute "
+        f"throughput: the H100 measurement is a true end-to-end figure on a cold on-demand pod "
+        f"(script startup, model init, and possibly network-backed storage all included per KLA's "
+        f"own timing definition), while this local figure is a warm, already-initialized measurement "
+        f"on local SSD. Both are real measurements of different things - H100 end-to-end is the "
+        f"correct number for the feasibility slide's headline figure; this breakdown is for "
+        f"understanding where time actually goes, not for replacing it.",
+    ]
+    return lines
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gt-dir", type=Path, required=True)
@@ -237,6 +322,19 @@ def main():
                      help="Per-image metrics CSV from scripts/compute_per_image_metrics.py - if both this and "
                           "--stageB-per-image-csv exist, adds the paired statistical significance section")
     ap.add_argument("--stageB-per-image-csv", type=Path, default=Path("reports/stageB_val_per_image_metrics.csv"))
+    ap.add_argument("--classical-baseline-csv", type=Path,
+                     default=Path("reports/classical_baseline_val_per_image_metrics.csv"),
+                     help="From scripts/classical_baseline_eval.py - adds the 3-way comparison table if present")
+    ap.add_argument("--perf-load-ms", type=float, default=None,
+                     help="From scripts/performance_profile.py output - if given (with the other --perf-* args), "
+                          "adds the memory/latency breakdown section")
+    ap.add_argument("--perf-pure-inference-ms", type=float, default=None)
+    ap.add_argument("--perf-full-path-ms", type=float, default=None)
+    ap.add_argument("--perf-disk-io-ms", type=float, default=None)
+    ap.add_argument("--perf-vram-single-mb", type=float, default=None)
+    ap.add_argument("--perf-vram-16-seq-mb", type=float, default=None)
+    ap.add_argument("--perf-vram-16-batch-mb", type=float, default=None)
+    ap.add_argument("--perf-n-timing", type=int, default=None)
     ap.add_argument("--out-dir", type=Path, default=Path("reports"))
     args = ap.parse_args()
 
@@ -289,6 +387,11 @@ def main():
             print(f"Skipping statistical significance section - missing per-image CSV "
                   f"({args.stageA_per_image_csv} exists={args.stageA_per_image_csv.exists()}, "
                   f"{args.stageB_per_image_csv} exists={args.stageB_per_image_csv.exists()})")
+
+        if args.classical_baseline_csv.exists():
+            lines.extend(classical_baseline_table(args.classical_baseline_csv, vi, viB))
+        else:
+            print(f"Skipping classical baseline section - {args.classical_baseline_csv} not found")
     else:
         lines.append("| B (KLA+external) | Val/OOD-proxy | *pending* | *pending* | *pending* | *pending* |")
 
@@ -302,6 +405,12 @@ def main():
         if args.h100_method_note:
             lines.append("")
             lines.append(args.h100_method_note)
+
+    if args.perf_load_ms is not None:
+        lines.extend(performance_table(
+            args.perf_load_ms, args.perf_pure_inference_ms, args.perf_full_path_ms, args.perf_disk_io_ms,
+            args.perf_vram_single_mb, args.perf_vram_16_seq_mb, args.perf_vram_16_batch_mb, args.perf_n_timing,
+        ))
 
     table_md = "\n".join(lines)
     with open(args.out_dir / "ppt_metrics_table.md", "w", encoding="utf-8") as f:

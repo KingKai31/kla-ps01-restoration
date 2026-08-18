@@ -231,6 +231,85 @@ def statistical_significance_table(stageA_csv, stageB_csv, n_bootstrap=1000, see
     return lines
 
 
+def ensemble_table(ensemble_csv):
+    """Task 3 of the final rigor pass: given Stage B's statistically-
+    significant PSNR/SSIM regression, checks whether simply averaging
+    Stage A's and Stage B's raw model outputs (before checkerboard
+    suppression/clamping - see scripts/ensemble_check.py) recovers some
+    of Stage A's quality while keeping most of Stage B's LPIPS gain, at
+    zero additional training cost. This is a SHIP-DECISION-LEVEL finding
+    per explicit instruction - reported here for a decision, not
+    unilaterally adopted as the shipped checkpoint."""
+    df = pd.read_csv(ensemble_csv)
+    n = len(df)
+
+    means = {
+        "A": (df["psnr_A"].mean(), df["ssim_A"].mean(), df["lpips_A"].mean()),
+        "B": (df["psnr_B"].mean(), df["ssim_B"].mean(), df["lpips_B"].mean()),
+        "Ens": (df["psnr_ens"].mean(), df["ssim_ens"].mean(), df["lpips_ens"].mean()),
+    }
+    scenarios = [
+        ("Equal weighting", lambda p, s, l: (1 / 3) * s + (1 / 3) * psnr_norm(p) + (1 / 3) * (1 - l)),
+        ("Quality-only (LPIPS ignored)", lambda p, s, l: 0.5 * s + 0.5 * psnr_norm(p)),
+        ("LPIPS-weighted", lambda p, s, l: 0.5 * (1 - l) + 0.25 * s + 0.25 * psnr_norm(p)),
+    ]
+    scenario_results = []
+    ens_wins = 0
+    for name, fn in scenarios:
+        scores = {m: fn(*vals) for m, vals in means.items()}
+        winner = max(scores, key=scores.get)
+        if winner == "Ens":
+            ens_wins += 1
+        scenario_results.append((name, scores, winner))
+
+    lpips_gain_total = means["A"][2] - means["B"][2]
+    lpips_gain_ens = means["A"][2] - means["Ens"][2]
+    lpips_retained_pct = (lpips_gain_ens / lpips_gain_total * 100) if lpips_gain_total > 0 else 0.0
+
+    lines = [
+        "",
+        "## Ensemble check (Stage A + Stage B averaged, val/OOD-proxy, n={})".format(n),
+        "",
+        "Zero new training: averages the two existing checkpoints' raw model outputs "
+        "(before checkerboard suppression/clamping) on every val image, then applies the same "
+        "post-processing run.py itself uses. Stage A/B numbers below are **recomputed under this "
+        "identical post-processing pipeline** for a controlled comparison, so they differ slightly "
+        "(within ~0.01-0.06) from the headline Stage A/B numbers elsewhere in this table, which used "
+        "a different evaluation script without checkerboard suppression applied - both are correct, "
+        "they're just not the same measurement.",
+        "",
+        "| Model | PSNR | SSIM | LPIPS |",
+        "|---|---|---|---|",
+        f"| Stage A | {means['A'][0]:.3f} | {means['A'][1]:.4f} | {means['A'][2]:.4f} |",
+        f"| Stage B | {means['B'][0]:.3f} | {means['B'][1]:.4f} | {means['B'][2]:.4f} |",
+        f"| Ensemble (A+B)/2 | {means['Ens'][0]:.3f} | {means['Ens'][1]:.4f} | {means['Ens'][2]:.4f} |",
+        "",
+        f"**PSNR/SSIM: the ensemble edges out both individual models** ({means['Ens'][0]:.3f}dB PSNR "
+        f"vs A's {means['A'][0]:.3f} and B's {means['B'][0]:.3f}). **LPIPS: the ensemble lands between "
+        f"A and B, retaining only {lpips_retained_pct:.0f}% of Stage B's LPIPS gain over Stage A** "
+        f"({lpips_gain_ens:.4f} of {lpips_gain_total:.4f} LPIPS points of improvement) - it gives back "
+        f"a meaningful chunk of exactly the gain Stage B was fine-tuned to produce.",
+        "",
+        "| Scenario | Stage A | Stage B | Ensemble | Winner |",
+        "|---|---|---|---|---|",
+    ]
+    for name, scores, winner in scenario_results:
+        lines.append(f"| {name} | {scores['A']:.4f} | {scores['B']:.4f} | {scores['Ens']:.4f} | **{winner}** |")
+
+    lines.extend([
+        "",
+        f"**Composite-score verdict: the ensemble does NOT win outright - it wins only "
+        f"{ens_wins}/3 weighting scenarios** (quality-only, where it barely edges Stage A), and loses "
+        f"to Stage B alone under equal-weighting and LPIPS-weighted scoring, the two scenarios where "
+        f"Stage B already won outright. Combined with roughly 2x inference cost (~150ms/image "
+        f"estimated, both models run per image) for a benefit that's marginal-to-absent depending on "
+        f"the weighting, **this does not look like a clear win** - recommendation is to keep shipping "
+        f"Stage B alone, but this is stated as a recommendation, not a unilateral decision: the raw "
+        f"numbers are above for a final call.",
+    ])
+    return lines
+
+
 def classical_baseline_table(classical_csv, vi, viB):
     """Answers "how much does the AI actually buy you over the dumbest
     reasonable approach" directly - bicubic upsample + non-local-means
@@ -465,6 +544,9 @@ def main():
     ap.add_argument("--scale-gen-csv", type=Path,
                      default=Path("reports/scale_generalization_256to512_test.csv"),
                      help="From scripts/scale_generalization_test.py - adds the scale-generalization section if present")
+    ap.add_argument("--ensemble-csv", type=Path,
+                     default=Path("reports/ensemble_val_per_image_metrics.csv"),
+                     help="From scripts/ensemble_check.py - adds the ensemble-check section if present")
     ap.add_argument("--out-dir", type=Path, default=Path("reports"))
     args = ap.parse_args()
 
@@ -532,6 +614,11 @@ def main():
             lines.extend(scale_generalization_table(args.scale_gen_csv, viB))
         else:
             print(f"Skipping scale-generalization section - {args.scale_gen_csv} not found")
+
+        if args.ensemble_csv.exists():
+            lines.extend(ensemble_table(args.ensemble_csv))
+        else:
+            print(f"Skipping ensemble-check section - {args.ensemble_csv} not found")
     else:
         lines.append("| B (KLA+external) | Val/OOD-proxy | *pending* | *pending* | *pending* | *pending* |")
 

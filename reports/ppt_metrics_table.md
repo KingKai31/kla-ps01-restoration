@@ -71,6 +71,26 @@ The shipped checkpoint has only ever been trained/validated at 128->256. Tested 
 
 **What NOT to conclude from this:** the model's PSNR here (29.99dB) is numerically higher than its real 128->256 val PSNR (28.09dB) - this is an artifact of the pseudo-GT's lack of real fine detail (a smoother target is mechanically easier to hit with high PSNR), **not evidence the model performs better at higher resolution**. Do not cite this comparison as a quality claim. The honest, testable claim for the feasibility slide is: *the architecture is confirmed to generalize mechanically to an untrained input resolution, verified end-to-end through the real run.py path* - real higher-resolution reconstruction quality (e.g. against a true 512<->256 KLA test pair, if released) remains unverified.
 
+## Ensemble check (Stage A + Stage B averaged, val/OOD-proxy, n=506)
+
+Zero new training: averages the two existing checkpoints' raw model outputs (before checkerboard suppression/clamping) on every val image, then applies the same post-processing run.py itself uses. Stage A/B numbers below are **recomputed under this identical post-processing pipeline** for a controlled comparison, so they differ slightly (within ~0.01-0.06) from the headline Stage A/B numbers elsewhere in this table, which used a different evaluation script without checkerboard suppression applied - both are correct, they're just not the same measurement.
+
+| Model | PSNR | SSIM | LPIPS |
+|---|---|---|---|
+| Stage A | 28.199 | 0.7388 | 0.3062 |
+| Stage B | 28.078 | 0.7324 | 0.1714 |
+| Ensemble (A+B)/2 | 28.224 | 0.7396 | 0.2244 |
+
+**PSNR/SSIM: the ensemble edges out both individual models** (28.224dB PSNR vs A's 28.199 and B's 28.078). **LPIPS: the ensemble lands between A and B, retaining only 61% of Stage B's LPIPS gain over Stage A** (0.0818 of 0.1349 LPIPS points of improvement) - it gives back a meaningful chunk of exactly the gain Stage B was fine-tuned to produce.
+
+| Scenario | Stage A | Stage B | Ensemble | Winner |
+|---|---|---|---|---|
+| Equal weighting | 0.6597 | 0.6998 | 0.6878 | **B** |
+| Quality-only (LPIPS ignored) | 0.6427 | 0.6354 | 0.6439 | **Ens** |
+| LPIPS-weighted | 0.6682 | 0.7320 | 0.7098 | **B** |
+
+**Composite-score verdict: the ensemble does NOT win outright - it wins only 1/3 weighting scenarios** (quality-only, where it barely edges Stage A), and loses to Stage B alone under equal-weighting and LPIPS-weighted scoring, the two scenarios where Stage B already won outright. Combined with roughly 2x inference cost (~150ms/image estimated, both models run per image) for a benefit that's marginal-to-absent depending on the weighting, **this does not look like a clear win** - recommendation is to keep shipping Stage B alone, but this is stated as a recommendation, not a unilateral decision: the raw numbers are above for a final call.
+
 ## Inference time (feasibility slide)
 
 **76.4 ms/image on NVIDIA H100 SXM 80GB** (3.819s total for a 50-image batch)
